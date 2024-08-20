@@ -1,57 +1,24 @@
 const { addVictronInterfaces } = require('../index');
 
-describe('victron-dbus-virtual, getValue tests', () => {
+describe('victron-dbus-virtual, GetValue being called on us', () => {
 
   it('works for the happy case', async () => {
-    const declaration = { name: 'foo' };
-    const definition = {};
+
+    const declaration = { name: 'foo', properties: { IntProp: 'i' } };
+    const definition = { IntProp: 42 };
     const bus = {
-      exportInterface: () => { },
-      invoke: function(args, cb) {
-        process.nextTick(() => cb(null, args));
-      }
-    }
-    const { getValue } = addVictronInterfaces(bus, declaration, definition);
+      exportInterface: jest.fn()
+    };
 
-    // NOTE: calling getValue() is useful to retrieve the value of a setting.
-    // See https://github.com/Chris927/dbus-victron-virtual-test/blob/master/index.js for an example.
+    addVictronInterfaces(bus, declaration, definition);
 
-    const result = await getValue({
-      path: '/StringProp',
-      interface_: 'foo',
-      destination: 'foo'
-    });
-    expect(result.member).toBe('GetValue');
-    expect(result.path).toBe('/StringProp');
-    expect(result.interface).toBe('foo');
-    expect(result.destination).toBe('foo');
+    expect(bus.exportInterface.mock.calls.length).toBe(2);
+    expect(bus.exportInterface.mock.calls[1][0].GetValue).toBeDefined();
+    expect(bus.exportInterface.mock.calls[1][1]).toBe('/IntProp');
 
-  });
+    const result = bus.exportInterface.mock.calls[1][0].GetValue();
+    expect(result).toEqual(['i', 42]);
 
-  it('fails if invoke fails', async () => {
-    const declaration = { name: 'foo' };
-    const definition = {};
-    const bus = {
-      exportInterface: () => { },
-      invoke: function(args, cb) {
-        process.nextTick(() => cb(new Error('oops')));
-      }
-    }
-    const { getValue } = addVictronInterfaces(bus, declaration, definition);
-
-    // NOTE: calling getValue() is useful to retrieve the value of a setting.
-    // See https://github.com/Chris927/dbus-victron-virtual-test/blob/master/index.js for an example.
-
-    try {
-      await getValue({
-        path: '/StringProp',
-        interface_: 'foo',
-        destination: 'foo'
-      });
-      expect(false, 'should have thrown');
-    } catch (err) {
-      expect(err.message).toBe('oops');
-    }
   });
 
 });

@@ -83,10 +83,15 @@ function addVictronInterfaces(bus, declaration, definition) {
 
   bus.exportInterface(iface, '/', ifaceDesc);
 
-  // support GetValue for each property
-  for (const [k,] of Object.entries(declaration.properties || {})) {
+  // support GetValue and SetValue for each property
+  for (const [k] of Object.entries(declaration.properties || {})) {
     bus.exportInterface(
       {
+        GetValue: function(/* value, msg */) {
+          const v = (declaration.properties || {})[k];
+          console.log('GetValue, definition[k] and v:', definition[k], v);
+          return wrapValue(v, definition[k]);
+        },
         SetValue: function(value, /* msg */) {
           console.log(
             'SetValue',
@@ -107,6 +112,7 @@ function addVictronInterfaces(bus, declaration, definition) {
       {
         name: 'com.victronenergy.BusItem',
         methods: {
+          GetValue: ['', 'v', [], ['value']],
           SetValue: ['v', 'i', [], []]
         }
       }
