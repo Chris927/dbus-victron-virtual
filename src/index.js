@@ -1,3 +1,5 @@
+const debug = require("debug")("dbus-victron-virtual");
+
 function addVictronInterfaces(bus, declaration, definition) {
   const warnings = [];
 
@@ -47,7 +49,7 @@ function addVictronInterfaces(bus, declaration, definition) {
   // we use this for GetItems and ItemsChanged
   function getProperties() {
     return Object.entries(declaration.properties || {}).map(([k, v]) => {
-      console.log("getProperties, entries, (k,v):", k, v);
+      debug("getProperties, entries, (k,v):", k, v);
 
       const format = v.type && v.format ? v.format : (v) => "" + v;
       return [
@@ -85,7 +87,7 @@ function addVictronInterfaces(bus, declaration, definition) {
       {
         GetValue: function (/* value, msg */) {
           const v = (declaration.properties || {})[k];
-          console.log("GetValue, definition[k] and v:", definition[k], v);
+          debug("GetValue, definition[k] and v:", definition[k], v);
           return wrapValue(v, definition[k]);
         },
         GetText: function () {
@@ -94,7 +96,7 @@ function addVictronInterfaces(bus, declaration, definition) {
           return format(definition[k]);
         },
         SetValue: function (value /* msg */) {
-          console.log(
+          debug(
             "SetValue",
             JSON.stringify(arguments[0]),
             JSON.stringify(arguments[1]),

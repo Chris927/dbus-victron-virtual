@@ -33,6 +33,7 @@
     "lint-staged": "^15.2.7"
   },
   "dependencies": {
-    "dbus-native": "^0.4.0"
+    "dbus-native": "^0.4.0",
+    "debug": "^4.3.7"
   }
 }
