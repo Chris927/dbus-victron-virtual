@@ -88,6 +88,11 @@ function addVictronInterfaces(bus, declaration, definition) {
           console.log("GetValue, definition[k] and v:", definition[k], v);
           return wrapValue(v, definition[k]);
         },
+        GetText: function () {
+          const v = (declaration.properties || {})[k];
+          const format = v.type && v.format ? v.format : (v) => "" + v;
+          return format(definition[k]);
+        },
         SetValue: function (value /* msg */) {
           console.log(
             "SetValue",
@@ -109,6 +114,7 @@ function addVictronInterfaces(bus, declaration, definition) {
         name: "com.victronenergy.BusItem",
         methods: {
           GetValue: ["", "v", [], ["value"]],
+          GetText: ["", "s", [], ["text"]],
           SetValue: ["v", "i", [], []],
         },
       },
