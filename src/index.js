@@ -53,7 +53,7 @@ function addVictronInterfaces(bus, declaration, definition) {
 
       const format = v.type && v.format ? v.format : (v) => "" + v;
       return [
-        k,
+        k.replace(/^(?!\/)/, '/'),
         [
           ["Value", wrapValue(v, definition[k])],
           ["Text", ["s", format(definition[k])]],
@@ -72,7 +72,7 @@ function addVictronInterfaces(bus, declaration, definition) {
   const ifaceDesc = {
     name: "com.victronenergy.BusItem",
     methods: {
-      GetItems: ["", "a{sa{sv}}", [], []],
+      GetItems: ["", "a{sa{sv}}", [], ['items']],
     },
     signals: {
       ItemsChanged: ["a{sa{sv}}", "", [], []],
