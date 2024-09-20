@@ -47,13 +47,13 @@ function addVictronInterfaces(bus, declaration, definition) {
   }
 
   // we use this for GetItems and ItemsChanged
-  function getProperties() {
+  function getProperties(items = false) {
     return Object.entries(declaration.properties || {}).map(([k, v]) => {
       debug("getProperties, entries, (k,v):", k, v);
 
       const format = v.type && v.format ? v.format : (v) => "" + v;
       return [
-        k.replace(/^(?!\/)/, '/'),
+        items ? k.replace(/^(?!\/)/, '/') : k,
         [
           ["Value", wrapValue(v, definition[k])],
           ["Text", ["s", format(definition[k])]],
@@ -64,7 +64,7 @@ function addVictronInterfaces(bus, declaration, definition) {
 
   const iface = {
     GetItems: function () {
-      return getProperties();
+      return getProperties(items=true);
     },
     emit: function () {},
   };
