@@ -32,7 +32,9 @@ function addVictronInterfaces(bus, declaration, definition, addDefaults = true) 
     declaration["properties"]["Mgmt/ProcessVersion"] = "s"
     definition["Mgmt/ProcessVersion"] = packageJson.version
 
-    declaration["properties"]["ProductId"] = "i"
+    declaration["properties"]["ProductId"] = {
+      type: 'i',
+      format: (v) => products[declaration["name"].split('.')[2]].toString(16)  }
     definition["ProductId"] = products[declaration["name"].split('.')[2]]
     declaration["properties"]["ProductName"] = "s"
     definition["ProductName"] = `Virtual ${declaration["name"].split('.')[2]}`
