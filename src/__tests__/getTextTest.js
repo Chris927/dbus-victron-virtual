@@ -8,7 +8,7 @@ describe("victron-dbus-virtual, GetText being called on us", () => {
       exportInterface: jest.fn(),
     };
 
-    addVictronInterfaces(bus, declaration, definition);
+    addVictronInterfaces(bus, declaration, definition, addDefaults = false);
 
     expect(bus.exportInterface.mock.calls.length).toBe(2);
     expect(bus.exportInterface.mock.calls[1][0].GetText).toBeDefined();
@@ -32,7 +32,7 @@ describe("victron-dbus-virtual, GetText being called on us", () => {
       exportInterface: jest.fn(),
     };
 
-    addVictronInterfaces(bus, declaration, definition);
+    addVictronInterfaces(bus, declaration, definition, addDefaults = false);
 
     expect(bus.exportInterface.mock.calls.length).toBe(2);
     expect(bus.exportInterface.mock.calls[1][0].GetText).toBeDefined();

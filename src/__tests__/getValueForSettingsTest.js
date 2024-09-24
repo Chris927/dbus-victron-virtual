@@ -11,7 +11,7 @@ describe('victron-dbus-virtual, getValue for settings tests', () => {
         process.nextTick(() => cb(null, args));
       }
     }
-    const { getValue } = addVictronInterfaces(bus, declaration, definition);
+    const { getValue } = addVictronInterfaces(bus, declaration, definition, addDefaults = false);
 
     // NOTE: calling getValue() is useful to retrieve the value of a setting.
     // See https://github.com/Chris927/dbus-victron-virtual-test/blob/master/index.js for an example.
@@ -37,7 +37,7 @@ describe('victron-dbus-virtual, getValue for settings tests', () => {
         process.nextTick(() => cb(new Error('oops')));
       }
     }
-    const { getValue } = addVictronInterfaces(bus, declaration, definition);
+    const { getValue } = addVictronInterfaces(bus, declaration, definition, addDefaults = false);
 
     // NOTE: calling getValue() is useful to retrieve the value of a setting.
     // See https://github.com/Chris927/dbus-victron-virtual-test/blob/master/index.js for an example.

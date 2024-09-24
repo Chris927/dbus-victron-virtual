@@ -12,7 +12,7 @@ describe('victron-dbus-virtual, setValue tests', () => {
         process.nextTick(() => cb(null, args));
       }
     }
-    const { setValue } = addVictronInterfaces(bus, declaration, definition);
+    const { setValue } = addVictronInterfaces(bus, declaration, definition, addDefaults = false);
 
     const result = await setValue({
       path: '/StringProp',
@@ -43,7 +43,7 @@ describe('victron-dbus-virtual, setValue tests', () => {
         process.nextTick(() => cb(null, args));
       }
     }
-    const { addSettings, setValue, removeSettings } = addVictronInterfaces(bus, declaration, definition);
+    const { addSettings, setValue, removeSettings } = addVictronInterfaces(bus, declaration, definition, addDefaults = false);
 
     // first, add a setting
     const settingsResult = await addSettings([

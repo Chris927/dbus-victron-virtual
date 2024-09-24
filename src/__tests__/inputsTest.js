@@ -7,7 +7,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
   it("works for the trivial case", () => {
     const declaration = { name: "foo" };
     const definition = {};
-    const result = addVictronInterfaces(noopBus, declaration, definition);
+    const result = addVictronInterfaces(noopBus, declaration, definition, addDefaults = false);
     expect(!!result).toBe(true);
   });
 
@@ -37,7 +37,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
       bar: "hello",
       emit: function () {},
     };
-    const result = addVictronInterfaces(noopBus, declaration, definition);
+    const result = addVictronInterfaces(noopBus, declaration, definition, addDefaults = false);
     expect(!!result).toBe(true);
     expect(result.warnings.length).toBe(0);
   });

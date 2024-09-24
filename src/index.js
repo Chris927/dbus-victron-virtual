@@ -1,6 +1,14 @@
 const debug = require("debug")("dbus-victron-virtual");
+const path = require('path')
+const packageJson = require(path.join(__dirname, '../', 'package.json'))
 
-function addVictronInterfaces(bus, declaration, definition) {
+const products = {
+  'temperature': 0xC060,
+  'meteo': 0xC061,
+  'grid': 0xC062,
+}
+
+function addVictronInterfaces(bus, declaration, definition, addDefaults = true) {
   const warnings = [];
 
   if (!declaration.name) {
@@ -14,6 +22,24 @@ function addVictronInterfaces(bus, declaration, definition) {
   }
   if (!declaration.name.match(/^com.victronenergy/)) {
     warnings.push("Interface name should start with com.victronenergy");
+  }
+
+  function addDefaults() {
+    declaration["properties"]["Mgmt/Connection"] = "s"
+    definition["Mgmt/Connection"] = "Virtual"
+    declaration["properties"]["Mgmt/ProcessName"] = "s"
+    definition["Mgmt/ProcessName"] = packageJson.name
+    declaration["properties"]["Mgmt/ProcessVersion"] = "s"
+    definition["Mgmt/ProcessVersion"] = packageJson.version
+
+    declaration["properties"]["ProductId"] = "i"
+    definition["ProductId"] = products[declaration["name"].split('.')[2]]
+    declaration["properties"]["ProductName"] = "s"
+    definition["ProductName"] = `Virtual ${declaration["name"].split('.')[2]}`
+  }
+
+  if (addDefaults == true) {
+     addDefaults()
   }
 
   function wrapValue(t, v) {

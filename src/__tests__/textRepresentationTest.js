@@ -14,7 +14,7 @@ describe('victron-dbus-virtual, textual representation', () => {
     }
 
     // TODO: we use emitItemsChanged(), but would rather use GetValue() if it were available already
-    const { emitItemsChanged } = addVictronInterfaces(bus, declaration, definition);
+    const { emitItemsChanged } = addVictronInterfaces(bus, declaration, definition, addDefaults = false);
     emitItemsChanged();
     expect(emit.mock.calls.length).toBe(1);
     expect(emit.mock.calls[0][0]).toBe('ItemsChanged');
@@ -44,7 +44,7 @@ describe('victron-dbus-virtual, textual representation', () => {
     }
 
     // TODO: we use emitItemsChanged(), but would rather use GetValue() if it were available already
-    const { emitItemsChanged } = addVictronInterfaces(bus, declaration, definition);
+    const { emitItemsChanged } = addVictronInterfaces(bus, declaration, definition, addDefaults = false);
     emitItemsChanged();
     expect(emit.mock.calls.length).toBe(1);
     expect(emit.mock.calls[0][0]).toBe('ItemsChanged');

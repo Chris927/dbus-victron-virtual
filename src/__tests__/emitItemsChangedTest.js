@@ -8,7 +8,7 @@ describe('victron-dbus-virtual, emitItemsChanged tests', () => {
   it('works for the case without props', () => {
     const declaration = { name: 'foo' };
     const definition = {};
-    const { emitItemsChanged } = addVictronInterfaces(noopBus, declaration, definition);
+    const { emitItemsChanged } = addVictronInterfaces(noopBus, declaration, definition, addDefaults = false);
     emitItemsChanged();
   });
 
@@ -21,7 +21,7 @@ describe('victron-dbus-virtual, emitItemsChanged tests', () => {
         iface.emit = emit;
       }
     }
-    const { emitItemsChanged } = addVictronInterfaces(bus, declaration, definition);
+    const { emitItemsChanged } = addVictronInterfaces(bus, declaration, definition, addDefaults = false);
     emitItemsChanged();
     expect(emit.mock.calls.length).toBe(1);
     expect(emit.mock.calls[0][0]).toBe('ItemsChanged');
