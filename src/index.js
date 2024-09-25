@@ -8,7 +8,7 @@ const products = {
   'grid': 0xC062,
 }
 
-function addVictronInterfaces(bus, declaration, definition, addDefaults = true) {
+function addVictronInterfaces(bus, declaration, definition, add_defaults = true) {
   const warnings = [];
 
   if (!declaration.name) {
@@ -40,7 +40,7 @@ function addVictronInterfaces(bus, declaration, definition, addDefaults = true) 
     definition["ProductName"] = `Virtual ${declaration["name"].split('.')[2]}`
   }
 
-  if (addDefaults == true) {
+  if (add_defaults == true) {
      addDefaults()
   }
 
