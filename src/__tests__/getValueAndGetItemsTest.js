@@ -16,8 +16,8 @@ describe("victron-dbus-virtual, GetValue and GetItems being called on us", () =>
     expect(calls[1][1]).toBe("/IntProp");
 
     // GetItems on path / returns the item with value and text
-    const itemsResult = calls[0][0].GetItems();
-    expect(itemsResult).toEqual([
+    const rootItemsResult = calls[0][0].GetItems();
+    expect(rootItemsResult).toEqual([
       [
         "/IntProp",
         [
@@ -27,8 +27,12 @@ describe("victron-dbus-virtual, GetValue and GetItems being called on us", () =>
       ],
     ]);
 
+    // GetValue on path / returns all props (therefore nested array)
+    const rootValueResult = calls[0][0].GetValue();
+    expect(rootValueResult).toEqual([["/IntProp", ["i", 42]]]);
+
     // GetValue on path /IntProp returns the value as a variant
-    const result = calls[1][0].GetValue();
-    expect(result).toEqual(["i", 42]);
+    const valueResult = calls[1][0].GetValue();
+    expect(valueResult).toEqual(["i", 42]);
   });
 });

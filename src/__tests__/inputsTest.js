@@ -87,7 +87,11 @@ describe("victron-dbus-virtual, input parameters tests", () => {
     expect(bus.exportInterface.mock.calls.length).toBe(4);
 
     const call0 = bus.exportInterface.mock.calls[0];
-    expect(Object.keys(call0[0])).toStrictEqual(["GetItems", "emit"]);
+    expect(Object.keys(call0[0])).toStrictEqual([
+      "GetItems",
+      "GetValue",
+      "emit",
+    ]);
 
     const call1 = bus.exportInterface.mock.calls[1];
     expect(Object.keys(call1[0])).toStrictEqual([

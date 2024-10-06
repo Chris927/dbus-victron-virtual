@@ -101,6 +101,12 @@ function addVictronInterfaces(
     GetItems: function () {
       return getProperties(true);
     },
+    GetValue: function () {
+      return Object.entries(declaration.properties || {}).map(([k, v]) => {
+        debug("GetValue, definition[k] and v:", definition[k], v);
+        return [k.replace(/^(?!\/)/, "/"), wrapValue(v, definition[k])];
+      });
+    },
     emit: function () { },
   };
 
@@ -108,6 +114,7 @@ function addVictronInterfaces(
     name: "com.victronenergy.BusItem",
     methods: {
       GetItems: ["", "a{sa{sv}}", [], ["items"]],
+      GetValue: ["", "a{sv}", [], ["value"]],
     },
     signals: {
       ItemsChanged: ["a{sa{sv}}", "", [], []],
