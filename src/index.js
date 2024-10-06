@@ -1,14 +1,19 @@
 const debug = require("debug")("dbus-victron-virtual");
-const path = require('path')
-const packageJson = require(path.join(__dirname, '../', 'package.json'))
+const path = require("path");
+const packageJson = require(path.join(__dirname, "../", "package.json"));
 
 const products = {
-  'temperature': 0xC060,
-  'meteo': 0xC061,
-  'grid': 0xC062,
-}
+  temperature: 0xc060,
+  meteo: 0xc061,
+  grid: 0xc062,
+};
 
-function addVictronInterfaces(bus, declaration, definition, add_defaults = true) {
+function addVictronInterfaces(
+  bus,
+  declaration,
+  definition,
+  add_defaults = true,
+) {
   const warnings = [];
 
   if (!declaration.name) {
@@ -25,23 +30,25 @@ function addVictronInterfaces(bus, declaration, definition, add_defaults = true)
   }
 
   function addDefaults() {
-    declaration["properties"]["Mgmt/Connection"] = "s"
-    definition["Mgmt/Connection"] = "Virtual"
-    declaration["properties"]["Mgmt/ProcessName"] = "s"
-    definition["Mgmt/ProcessName"] = packageJson.name
-    declaration["properties"]["Mgmt/ProcessVersion"] = "s"
-    definition["Mgmt/ProcessVersion"] = packageJson.version
+    declaration["properties"]["Mgmt/Connection"] = "s";
+    definition["Mgmt/Connection"] = "Virtual";
+    declaration["properties"]["Mgmt/ProcessName"] = "s";
+    definition["Mgmt/ProcessName"] = packageJson.name;
+    declaration["properties"]["Mgmt/ProcessVersion"] = "s";
+    definition["Mgmt/ProcessVersion"] = packageJson.version;
 
     declaration["properties"]["ProductId"] = {
-      type: 'i',
-      format: (v) => products[declaration["name"].split('.')[2]].toString(16)  }
-    definition["ProductId"] = products[declaration["name"].split('.')[2]]
-    declaration["properties"]["ProductName"] = "s"
-    definition["ProductName"] = `Virtual ${declaration["name"].split('.')[2]}`
+      type: "i",
+      format: (/* v */) =>
+        products[declaration["name"].split(".")[2]].toString(16),
+    };
+    definition["ProductId"] = products[declaration["name"].split(".")[2]];
+    declaration["properties"]["ProductName"] = "s";
+    definition["ProductName"] = `Virtual ${declaration["name"].split(".")[2]}`;
   }
 
   if (add_defaults == true) {
-     addDefaults()
+    addDefaults();
   }
 
   function wrapValue(t, v) {
@@ -74,14 +81,14 @@ function addVictronInterfaces(bus, declaration, definition, add_defaults = true)
     }
   }
 
-  // we use this for GetItems and ItemsChanged
+  // we use this for GetItems and ItemsChanged. If 'items' is true, we prepend a slash to the key
   function getProperties(items = false) {
     return Object.entries(declaration.properties || {}).map(([k, v]) => {
       debug("getProperties, entries, (k,v):", k, v);
 
       const format = v.type && v.format ? v.format : (v) => "" + v;
       return [
-        items ? k.replace(/^(?!\/)/, '/') : k,
+        items ? k.replace(/^(?!\/)/, "/") : k,
         [
           ["Value", wrapValue(v, definition[k])],
           ["Text", ["s", format(definition[k])]],
@@ -92,15 +99,15 @@ function addVictronInterfaces(bus, declaration, definition, add_defaults = true)
 
   const iface = {
     GetItems: function () {
-      return getProperties(items=true);
+      return getProperties(true);
     },
-    emit: function () {},
+    emit: function () { },
   };
 
   const ifaceDesc = {
     name: "com.victronenergy.BusItem",
     methods: {
-      GetItems: ["", "a{sa{sv}}", [], ['items']],
+      GetItems: ["", "a{sa{sv}}", [], ["items"]],
     },
     signals: {
       ItemsChanged: ["a{sa{sv}}", "", [], []],

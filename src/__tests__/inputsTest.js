@@ -2,12 +2,17 @@
 const { addVictronInterfaces } = require("../index");
 
 describe("victron-dbus-virtual, input parameters tests", () => {
-  const noopBus = { exportInterface: () => {} };
+  const noopBus = { exportInterface: () => { } };
 
   it("works for the trivial case", () => {
     const declaration = { name: "foo" };
     const definition = {};
-    const result = addVictronInterfaces(noopBus, declaration, definition, addDefaults = false);
+    const result = addVictronInterfaces(
+      noopBus,
+      declaration,
+      definition,
+      false,
+    );
     expect(!!result).toBe(true);
   });
 
@@ -35,9 +40,14 @@ describe("victron-dbus-virtual, input parameters tests", () => {
     const definition = {
       foo: 42,
       bar: "hello",
-      emit: function () {},
+      emit: function () { },
     };
-    const result = addVictronInterfaces(noopBus, declaration, definition, addDefaults = false);
+    const result = addVictronInterfaces(
+      noopBus,
+      declaration,
+      definition,
+      false,
+    );
     expect(!!result).toBe(true);
     expect(result.warnings.length).toBe(0);
   });
@@ -46,7 +56,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
     const declaration = {
       name: "com.victronenergy.my-service-with-dashes",
     };
-    const { warnings } = addVictronInterfaces(noopBus, declaration, {});
+    const { warnings } = addVictronInterfaces(noopBus, declaration, {}, false);
     expect(warnings.length).toBe(1);
     expect(warnings[0].includes("problematic characters")).toBe(true);
   });
@@ -55,7 +65,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
     const declaration = {
       name: "com.example.my_service",
     };
-    const { warnings } = addVictronInterfaces(noopBus, declaration, {});
+    const { warnings } = addVictronInterfaces(noopBus, declaration, {}, false);
     expect(warnings.length).toBe(1);
     expect(warnings[0].includes("start with com.victronenergy")).toBe(true);
   });
@@ -73,7 +83,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
       exportInterface: jest.fn(),
     };
 
-    addVictronInterfaces(bus, declaration, {});
+    addVictronInterfaces(bus, declaration, {}, false);
     expect(bus.exportInterface.mock.calls.length).toBe(4);
 
     const call0 = bus.exportInterface.mock.calls[0];
