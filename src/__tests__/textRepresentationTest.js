@@ -23,7 +23,7 @@ describe("victron-dbus-virtual, textual representation", () => {
     expect(emit.mock.calls[0][0]).toBe("ItemsChanged");
     expect(emit.mock.calls[0][1]).toEqual([
       [
-        "SomeIntNumber",
+        "/SomeIntNumber",
         [
           ["Value", ["i", 42]],
           ["Text", ["s", "42"]],
@@ -65,7 +65,7 @@ describe("victron-dbus-virtual, textual representation", () => {
     expect(emit.mock.calls[0][0]).toBe("ItemsChanged");
     expect(emit.mock.calls[0][1]).toEqual([
       [
-        "SomeIntNumber",
+        "/SomeIntNumber",
         [
           ["Value", ["i", 42]],
           ["Text", ["s", "fourty-two"]],
@@ -79,7 +79,7 @@ describe("victron-dbus-virtual, textual representation", () => {
     expect(emit.mock.calls[1][0]).toBe("ItemsChanged");
     expect(emit.mock.calls[1][1]).toEqual([
       [
-        "SomeIntNumber",
+        "/SomeIntNumber",
         [
           ["Value", ["i", 43]],
           ["Text", ["s", "not fourty-two"]],
@@ -94,7 +94,7 @@ describe("victron-dbus-virtual, textual representation", () => {
     expect(emit.mock.calls[2][0]).toBe("ItemsChanged");
     expect(emit.mock.calls[2][1]).toEqual([
       [
-        "SomeIntNumber",
+        "/SomeIntNumber",
         [
           ["Value", ["i", 43]],
           ["Text", ["s", "43"]],

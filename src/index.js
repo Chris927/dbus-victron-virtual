@@ -145,7 +145,7 @@ function addVictronInterfaces(
           );
           try {
             definition[k] = unwrapValue(value);
-            iface.emit("ItemsChanged", getProperties());
+            iface.emit("ItemsChanged", getProperties(true));
             return 0;
           } catch (e) {
             console.error(e);
@@ -259,7 +259,7 @@ function addVictronInterfaces(
   }
 
   return {
-    emitItemsChanged: () => iface.emit("ItemsChanged", getProperties()),
+    emitItemsChanged: () => iface.emit("ItemsChanged", getProperties(true)),
     addSettings,
     removeSettings,
     setValue,
