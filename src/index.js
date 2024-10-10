@@ -76,6 +76,13 @@ function addVictronInterfaces(
         return Number(v[0]);
       case "d":
         return Number(v[0]);
+      case "ai":
+        if (v[0].length === 0) {
+          return null;
+        }
+        throw new Error(
+          'Unsupported value type "ai", only supported as empty array',
+        );
       default:
         throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
     }
@@ -107,7 +114,7 @@ function addVictronInterfaces(
         return [k.replace(/^(?!\/)/, "/"), wrapValue(v, definition[k])];
       });
     },
-    emit: function () { },
+    emit: function () {},
   };
 
   const ifaceDesc = {
@@ -130,6 +137,9 @@ function addVictronInterfaces(
         GetValue: function (/* value, msg */) {
           const v = (declaration.properties || {})[k];
           debug("GetValue, definition[k] and v:", definition[k], v);
+          if (definition[k] === null) {
+            return ["ai", []]; // by convention, this represents a null / empty value
+          }
           return wrapValue(v, definition[k]);
         },
         GetText: function () {
