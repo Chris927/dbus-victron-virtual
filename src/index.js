@@ -30,6 +30,15 @@ function addVictronInterfaces(
   }
 
   function addDefaults() {
+    console.log("addDefaults, declaration.name:", declaration.name);
+    const productInName = declaration.name.split(".")[2];
+    if (!productInName) {
+      throw new Error(`Unable to extract product from name, ensure name is of the form 'com.victronenergy.product.my_name', declaration.name=${declaration.name}`);
+    }
+    const product = products[productInName];
+    if (!product) {
+      throw new Error(`Invalid product, ensure product name is in ${products.join(", ")}`);
+    }
     declaration["properties"]["Mgmt/Connection"] = "s";
     definition["Mgmt/Connection"] = "Virtual";
     declaration["properties"]["Mgmt/ProcessName"] = "s";
@@ -40,7 +49,7 @@ function addVictronInterfaces(
     declaration["properties"]["ProductId"] = {
       type: "i",
       format: (/* v */) =>
-        products[declaration["name"].split(".")[2]].toString(16),
+        product.toString(16),
     };
     definition["ProductId"] = products[declaration["name"].split(".")[2]];
     declaration["properties"]["ProductName"] = "s";

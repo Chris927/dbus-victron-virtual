@@ -9,7 +9,7 @@ describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
   test("this is a dummy integration test", async () => {
 
     // example adopted from https://github.com/sidorares/dbus-native/blob/master/examples/basic-service.js
-    const serviceName = 'com.victronenergy.my_integration_test_service1';
+    const serviceName = 'com.victronenergy.temperature.my_integration_test_service1';
     const interfaceName = serviceName;
     const objectPath = `/${serviceName.replace(/\./g, '/')}`;
 

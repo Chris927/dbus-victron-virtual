@@ -124,7 +124,7 @@ describe("victron-dbus-virtual, setValue tests", () => {
         process.nextTick(() => cb(new Error("testing ... invoke failed")));
       },
     };
-    const { setValue } = addVictronInterfaces(bus, declaration, definition);
+    const { setValue } = addVictronInterfaces(bus, declaration, definition, false);
 
     try {
       await setValue({
