@@ -6,6 +6,7 @@ const products = {
   temperature: 0xc060,
   meteo: 0xc061,
   grid: 0xc062,
+  heatpump: 0xc063
 };
 
 function addVictronInterfaces(
@@ -61,6 +62,9 @@ function addVictronInterfaces(
   }
 
   function wrapValue(t, v) {
+    if (v === null) {
+      return ["ai", []];
+    }
     switch (t) {
       case "b":
         return ["b", v];
@@ -146,9 +150,6 @@ function addVictronInterfaces(
         GetValue: function (/* value, msg */) {
           const v = (declaration.properties || {})[k];
           debug("GetValue, definition[k] and v:", definition[k], v);
-          if (definition[k] === null) {
-            return ["ai", []]; // by convention, this represents a null / empty value
-          }
           return wrapValue(v, definition[k]);
         },
         GetText: function () {
