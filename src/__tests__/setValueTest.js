@@ -106,7 +106,7 @@ describe("victron-dbus-virtual, setValue tests", () => {
     expect(emit.mock.calls[0][0]).toBe("ItemsChanged");
     expect(emit.mock.calls[0][1]).toEqual([
       [
-        "StringProp",
+        "/StringProp",
         [
           ["Value", ["s", "hello"]],
           ["Text", ["s", "hello"]],

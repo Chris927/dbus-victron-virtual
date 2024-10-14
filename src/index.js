@@ -31,7 +31,7 @@ function addVictronInterfaces(
   }
 
   function addDefaults() {
-    console.log("addDefaults, declaration.name:", declaration.name);
+    debug("addDefaults, declaration.name:", declaration.name);
     const productInName = declaration.name.split(".")[2];
     if (!productInName) {
       throw new Error(`Unable to extract product from name, ensure name is of the form 'com.victronenergy.product.my_name', declaration.name=${declaration.name}`);
@@ -101,12 +101,40 @@ function addVictronInterfaces(
     }
   }
 
+  const getFormatFunction = (v) => {
+    if (v.format && typeof v.format === 'function') {
+      // Wrap the custom format function to ensure it always returns a string
+      return (value) => {
+        const formatted = v.format(value);
+        return formatted != null ? String(formatted) : '';
+      };
+    } else {
+      return (value) => {
+        if (value == null) return '';
+
+        let stringValue = String(value);
+
+        // Handle potential type mismatches
+        switch (v.type) {
+          case 'd': // double/float
+            return isNaN(parseFloat(stringValue)) ? '' : stringValue;
+          case 'i': // integer
+            return isNaN(parseInt(stringValue, 10)) ? '' : stringValue;
+          case 's': // string
+            return stringValue;
+          default:
+            return stringValue;
+        }
+      };
+    }
+  };
+
   // we use this for GetItems and ItemsChanged. If 'items' is true, we prepend a slash to the key
   function getProperties(items = false) {
     return Object.entries(declaration.properties || {}).map(([k, v]) => {
       debug("getProperties, entries, (k,v):", k, v);
 
-      const format = v.type && v.format ? v.format : (v) => "" + v;
+      const format = getFormatFunction(v);
       return [
         items ? k.replace(/^(?!\/)/, "/") : k,
         [
@@ -154,7 +182,7 @@ function addVictronInterfaces(
         },
         GetText: function () {
           const v = (declaration.properties || {})[k];
-          const format = v.type && v.format ? v.format : (v) => "" + v;
+          const format = getFormatFunction(v);
           return format(definition[k]);
         },
         SetValue: function (value /* msg */) {
@@ -165,7 +193,7 @@ function addVictronInterfaces(
           );
           try {
             definition[k] = unwrapValue(value);
-            iface.emit("ItemsChanged", getProperties());
+            iface.emit("ItemsChanged", getProperties(true));
             return 0;
           } catch (e) {
             console.error(e);
