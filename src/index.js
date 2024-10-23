@@ -145,6 +145,17 @@ function addVictronInterfaces(
     });
   }
 
+  function getType(value) {
+    return value === null ? 'd'
+        : typeof value === 'undefined' ? (() => { throw new Error('Value cannot be undefined'); })()
+        : typeof value === 'string' ? 's'
+        : typeof value === 'number'
+            ? (isNaN(value)
+                ? (() => { throw new Error('NaN is not a valid input'); })()
+                : Number.isInteger(value) ? 'i' : 'd')
+        : (() => { throw new Error('Unsupported type: ' + typeof value); })();
+  }
+
   const iface = {
     GetItems: function () {
       return getProperties(true);
@@ -217,7 +228,7 @@ function addVictronInterfaces(
     const body = [
       settings.map((setting) => [
         ["path", wrapValue("s", setting.path)],
-        ["default", wrapValue("s", "" + setting.default)], // TODO: forcing value to be string
+        ["default", wrapValue(typeof setting.type !== 'undefined' ? setting.type: getType(setting.default), setting.default)],
         // TODO: incomplete, min and max missing
       ]),
     ];
@@ -266,7 +277,7 @@ function addVictronInterfaces(
     });
   }
 
-  async function setValue({ path, interface_, destination, value }) {
+  async function setValue({ path, interface_, destination, value, type }) {
     return await new Promise((resolve, reject) => {
       bus.invoke(
         {
@@ -275,7 +286,7 @@ function addVictronInterfaces(
           member: "SetValue",
           destination,
           signature: "v",
-          body: [wrapValue("s", "" + value)], // TODO: only supports string type for now
+          body: [wrapValue(typeof type !== 'undefined' ? type: getType(value), value)],
         },
         function (err, result) {
           if (err) {
