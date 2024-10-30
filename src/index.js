@@ -6,7 +6,7 @@ const products = {
   temperature: 0xc060,
   meteo: 0xc061,
   grid: 0xc062,
-  heatpump: 0xc063
+  tank: 0xc063
 };
 
 function addVictronInterfaces(
