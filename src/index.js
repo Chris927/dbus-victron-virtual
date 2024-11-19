@@ -285,6 +285,7 @@ function addVictronInterfaces(
         definition.DeviceInstance = value;
         bus.connection.end();
         bus.connection = createConnection();
+        debug("Reconnecting to dbus, as DeviceInstance changed.");
         resolve();
       } else {
         bus.invoke(
