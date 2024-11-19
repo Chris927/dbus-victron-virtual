@@ -1,4 +1,5 @@
 const debug = require("debug")("dbus-victron-virtual");
+const { createConnection } = require("dbus-native-victron");
 const path = require("path");
 const packageJson = require(path.join(__dirname, "../", "package.json"));
 
@@ -279,22 +280,29 @@ function addVictronInterfaces(
 
   async function setValue({ path, interface_, destination, value, type }) {
     return await new Promise((resolve, reject) => {
-      bus.invoke(
-        {
-          interface: interface_,
-          path: path || "/",
-          member: "SetValue",
-          destination,
-          signature: "v",
-          body: [wrapValue(typeof type !== 'undefined' ? type: getType(value), value)],
-        },
-        function (err, result) {
-          if (err) {
-            return reject(err);
-          }
-          resolve(result);
-        },
-      );
+      if (path === '/DeviceInstance') {
+        // when the device instance changes, we need to re-connect
+        definition.DeviceInstance = value;
+        bus.connection.end();
+        bus.connection = createConnection();
+      } else {
+        bus.invoke(
+          {
+            interface: interface_,
+            path: path || "/",
+            member: "SetValue",
+            destination,
+            signature: "v",
+            body: [wrapValue(typeof type !== 'undefined' ? type: getType(value), value)],
+          },
+          function (err, result) {
+            if (err) {
+              return reject(err);
+            }
+            resolve(result);
+          },
+        );
+      }
     });
   }
 
