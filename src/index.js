@@ -285,6 +285,7 @@ function addVictronInterfaces(
         definition.DeviceInstance = value;
         bus.connection.end();
         bus.connection = createConnection();
+        resolve();
       } else {
         bus.invoke(
           {
