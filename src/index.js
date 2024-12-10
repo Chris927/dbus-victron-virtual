@@ -161,6 +161,53 @@ async function removeSettings(bus, settings) {
   });
 }
 
+async function setValue(bus, { path, interface_, destination, value, type }) {
+  return await new Promise((resolve, reject) => {
+    if (path === "/DeviceInstance") {
+      console.warn(
+        "setValue called for path /DeviceInstance, this will be ignored by Victron services.",
+      );
+    }
+    bus.invoke(
+      {
+        interface: interface_,
+        path: path || "/",
+        member: "SetValue",
+        destination,
+        signature: "v",
+        body: [
+          wrapValue(typeof type !== "undefined" ? type : getType(value), value),
+        ],
+      },
+      function (err, result) {
+        if (err) {
+          return reject(err);
+        }
+        resolve(result);
+      },
+    );
+  });
+}
+
+async function getValue(bus, { path, interface_, destination }) {
+  return await new Promise((resolve, reject) => {
+    bus.invoke(
+      {
+        interface: interface_,
+        path: path || "/",
+        member: "GetValue",
+        destination,
+      },
+      function (err, result) {
+        if (err) {
+          return reject(err);
+        }
+        resolve(result);
+      },
+    );
+  });
+}
+
 function addVictronInterfaces(
   bus,
   declaration,
@@ -328,64 +375,22 @@ function addVictronInterfaces(
     );
   }
 
-  async function setValue({ path, interface_, destination, value, type }) {
-    return await new Promise((resolve, reject) => {
-      if (path === "/DeviceInstance") {
-        console.warn(
-          "setValue called for path /DeviceInstance, this will be ignored by Victron services.",
-        );
-      }
-      bus.invoke(
-        {
-          interface: interface_,
-          path: path || "/",
-          member: "SetValue",
-          destination,
-          signature: "v",
-          body: [
-            wrapValue(
-              typeof type !== "undefined" ? type : getType(value),
-              value,
-            ),
-          ],
-        },
-        function (err, result) {
-          if (err) {
-            return reject(err);
-          }
-          resolve(result);
-        },
-      );
-    });
-  }
-
-  async function getValue({ path, interface_, destination }) {
-    return await new Promise((resolve, reject) => {
-      bus.invoke(
-        {
-          interface: interface_,
-          path: path || "/",
-          member: "GetValue",
-          destination,
-        },
-        function (err, result) {
-          if (err) {
-            return reject(err);
-          }
-          resolve(result);
-        },
-      );
-    });
-  }
-
   return {
     emitItemsChanged: () => iface.emit("ItemsChanged", getProperties()),
     addSettings: (settings) => addSettings(bus, settings),
     removeSettings: (settings) => removeSettings(bus, settings),
-    setValue,
-    getValue,
+    setValue: ({ path, interface_, destination, value, type }) =>
+      setValue(bus, { path, interface_, destination, value, type }),
+    getValue: ({ path, interface_, destination }) =>
+      getValue(bus, { path, interface_, destination }),
     warnings,
   };
 }
 
-module.exports = { addVictronInterfaces, addSettings, removeSettings };
+module.exports = {
+  addVictronInterfaces,
+  addSettings,
+  removeSettings,
+  getValue,
+  setValue,
+};
