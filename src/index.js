@@ -1,5 +1,4 @@
 const debug = require("debug")("dbus-victron-virtual");
-const { createConnection } = require("dbus-native-victron");
 const path = require("path");
 const packageJson = require(path.join(__dirname, "../", "package.json"));
 
@@ -7,8 +6,160 @@ const products = {
   temperature: 0xc060,
   meteo: 0xc061,
   grid: 0xc062,
-  tank: 0xc063
+  tank: 0xc063,
 };
+
+// TODO: likely not required
+/*
+const dbus = require("dbus-native-victron");
+
+function connectToVictronDBus() {
+  // we manage the connection to the dbus here, so we can re-connect when the device instance changes
+  const bus = dbus.sessionBus();
+
+  const interfaces = [];
+  function addInterface(iface, desc) {
+    interfaces.push({ iface, desc });
+    return addVictronInterfaces(bus, iface, desc);
+  }
+
+  function reconnect() {
+    // .. disconnect and connect
+    // TODO
+    for (const { iface, desc } of interfaces) {
+      addVictronInterfaces(bus, iface, desc);
+    }
+  }
+
+  const victronBusWrapper = {
+    addInterface,
+  };
+  return victronBusWrapper;
+}
+*/
+
+function getType(value) {
+  return value === null
+    ? "d"
+    : typeof value === "undefined"
+      ? (() => {
+          throw new Error("Value cannot be undefined");
+        })()
+      : typeof value === "string"
+        ? "s"
+        : typeof value === "number"
+          ? isNaN(value)
+            ? (() => {
+                throw new Error("NaN is not a valid input");
+              })()
+            : Number.isInteger(value)
+              ? "i"
+              : "d"
+          : (() => {
+              throw new Error("Unsupported type: " + typeof value);
+            })();
+}
+
+function wrapValue(t, v) {
+  if (v === null) {
+    return ["ai", []];
+  }
+  switch (t) {
+    case "b":
+      return ["b", v];
+    case "s":
+      return ["s", v];
+    case "i":
+      return ["i", v];
+    case "d":
+      return ["d", v];
+    default:
+      return t.type ? wrapValue(t.type, v) : v;
+  }
+}
+
+function unwrapValue([t, v]) {
+  switch (t[0].type) {
+    case "b":
+      return !!v[0];
+    case "s":
+      return v[0];
+    case "i":
+      return Number(v[0]);
+    case "d":
+      return Number(v[0]);
+    case "ai":
+      if (v[0].length === 0) {
+        return null;
+      }
+      throw new Error(
+        'Unsupported value type "ai", only supported as empty array',
+      );
+    default:
+      throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
+  }
+}
+
+async function addSettings(bus, settings) {
+  const body = [
+    settings.map((setting) => [
+      ["path", wrapValue("s", setting.path)],
+      [
+        "default",
+        wrapValue(
+          typeof setting.type !== "undefined"
+            ? setting.type
+            : getType(setting.default),
+          setting.default,
+        ),
+      ],
+      // TODO: incomplete, min and max missing
+    ]),
+  ];
+  return await new Promise((resolve, reject) => {
+    bus.invoke(
+      {
+        interface: "com.victronenergy.Settings",
+        path: "/",
+        member: "AddSettings",
+        destination: "com.victronenergy.settings",
+        type: undefined,
+        signature: "aa{sv}",
+        body: body,
+      },
+      function (err, result) {
+        if (err) {
+          return reject(err);
+        }
+        return resolve(result);
+      },
+    );
+  });
+}
+
+async function removeSettings(bus, settings) {
+  const body = [settings.map((setting) => setting.path)];
+
+  return new Promise((resolve, reject) => {
+    bus.invoke(
+      {
+        interface: "com.victronenergy.Settings",
+        path: "/",
+        member: "RemoveSettings",
+        destination: "com.victronenergy.settings",
+        type: undefined,
+        signature: "as",
+        body: body,
+      },
+      function (err, result) {
+        if (err) {
+          return reject(err);
+        }
+        return resolve(result);
+      },
+    );
+  });
+}
 
 function addVictronInterfaces(
   bus,
@@ -35,11 +186,15 @@ function addVictronInterfaces(
     debug("addDefaults, declaration.name:", declaration.name);
     const productInName = declaration.name.split(".")[2];
     if (!productInName) {
-      throw new Error(`Unable to extract product from name, ensure name is of the form 'com.victronenergy.product.my_name', declaration.name=${declaration.name}`);
+      throw new Error(
+        `Unable to extract product from name, ensure name is of the form 'com.victronenergy.product.my_name', declaration.name=${declaration.name}`,
+      );
     }
     const product = products[productInName];
     if (!product) {
-      throw new Error(`Invalid product, ensure product name is in ${products.join(", ")}`);
+      throw new Error(
+        `Invalid product, ensure product name is in ${products.join(", ")}`,
+      );
     }
     declaration["properties"]["Mgmt/Connection"] = "s";
     definition["Mgmt/Connection"] = "Virtual";
@@ -50,8 +205,7 @@ function addVictronInterfaces(
 
     declaration["properties"]["ProductId"] = {
       type: "i",
-      format: (/* v */) =>
-        product.toString(16),
+      format: (/* v */) => product.toString(16),
     };
     definition["ProductId"] = products[declaration["name"].split(".")[2]];
     declaration["properties"]["ProductName"] = "s";
@@ -62,66 +216,26 @@ function addVictronInterfaces(
     addDefaults();
   }
 
-  function wrapValue(t, v) {
-    if (v === null) {
-      return ["ai", []];
-    }
-    switch (t) {
-      case "b":
-        return ["b", v];
-      case "s":
-        return ["s", v];
-      case "i":
-        return ["i", v];
-      case "d":
-        return ["d", v];
-      default:
-        return t.type ? wrapValue(t.type, v) : v;
-    }
-  }
-
-  function unwrapValue([t, v]) {
-    switch (t[0].type) {
-      case "b":
-        return !!v[0];
-      case "s":
-        return v[0];
-      case "i":
-        return Number(v[0]);
-      case "d":
-        return Number(v[0]);
-      case "ai":
-        if (v[0].length === 0) {
-          return null;
-        }
-        throw new Error(
-          'Unsupported value type "ai", only supported as empty array',
-        );
-      default:
-        throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
-    }
-  }
-
   const getFormatFunction = (v) => {
-    if (v.format && typeof v.format === 'function') {
+    if (v.format && typeof v.format === "function") {
       // Wrap the custom format function to ensure it always returns a string
       return (value) => {
         const formatted = v.format(value);
-        return formatted != null ? String(formatted) : '';
+        return formatted != null ? String(formatted) : "";
       };
     } else {
       return (value) => {
-        if (value == null) return '';
+        if (value == null) return "";
 
         let stringValue = String(value);
 
         // Handle potential type mismatches
         switch (v.type) {
-          case 'd': // double/float
-            return isNaN(parseFloat(stringValue)) ? '' : stringValue;
-          case 'i': // integer
-            return isNaN(parseInt(stringValue, 10)) ? '' : stringValue;
-          case 's': // string
+          case "d": // double/float
+            return isNaN(parseFloat(stringValue)) ? "" : stringValue;
+          case "i": // integer
+            return isNaN(parseInt(stringValue, 10)) ? "" : stringValue;
+          case "s": // string
             return stringValue;
           default:
             return stringValue;
@@ -144,17 +258,6 @@ function addVictronInterfaces(
         ],
       ];
     });
-  }
-
-  function getType(value) {
-    return value === null ? 'd'
-        : typeof value === 'undefined' ? (() => { throw new Error('Value cannot be undefined'); })()
-        : typeof value === 'string' ? 's'
-        : typeof value === 'number'
-            ? (isNaN(value)
-                ? (() => { throw new Error('NaN is not a valid input'); })()
-                : Number.isInteger(value) ? 'i' : 'd')
-        : (() => { throw new Error('Unsupported type: ' + typeof value); })();
   }
 
   const iface = {
@@ -225,86 +328,34 @@ function addVictronInterfaces(
     );
   }
 
-  async function addSettings(settings) {
-    const body = [
-      settings.map((setting) => [
-        ["path", wrapValue("s", setting.path)],
-        ["default", wrapValue(typeof setting.type !== 'undefined' ? setting.type: getType(setting.default), setting.default)],
-        // TODO: incomplete, min and max missing
-      ]),
-    ];
-    return await new Promise((resolve, reject) => {
-      bus.invoke(
-        {
-          interface: "com.victronenergy.Settings",
-          path: "/",
-          member: "AddSettings",
-          destination: "com.victronenergy.settings",
-          type: undefined,
-          signature: "aa{sv}",
-          body: body,
-        },
-        function (err, result) {
-          if (err) {
-            return reject(err);
-          }
-          return resolve(result);
-        },
-      );
-    });
-  }
-
-  async function removeSettings(settings) {
-    const body = [settings.map((setting) => setting.path)];
-
-    return new Promise((resolve, reject) => {
-      bus.invoke(
-        {
-          interface: "com.victronenergy.Settings",
-          path: "/",
-          member: "RemoveSettings",
-          destination: "com.victronenergy.settings",
-          type: undefined,
-          signature: "as",
-          body: body,
-        },
-        function (err, result) {
-          if (err) {
-            return reject(err);
-          }
-          return resolve(result);
-        },
-      );
-    });
-  }
-
   async function setValue({ path, interface_, destination, value, type }) {
     return await new Promise((resolve, reject) => {
-      if (path === '/DeviceInstance') {
-        // when the device instance changes, we need to re-connect
-        definition.DeviceInstance = value;
-        bus.connection.end();
-        bus.connection = createConnection();
-        debug("Reconnecting to dbus, as DeviceInstance changed.");
-        resolve();
-      } else {
-        bus.invoke(
-          {
-            interface: interface_,
-            path: path || "/",
-            member: "SetValue",
-            destination,
-            signature: "v",
-            body: [wrapValue(typeof type !== 'undefined' ? type: getType(value), value)],
-          },
-          function (err, result) {
-            if (err) {
-              return reject(err);
-            }
-            resolve(result);
-          },
+      if (path === "/DeviceInstance") {
+        console.warn(
+          "setValue called for path /DeviceInstance, this will be ignored by Victron services.",
         );
       }
+      bus.invoke(
+        {
+          interface: interface_,
+          path: path || "/",
+          member: "SetValue",
+          destination,
+          signature: "v",
+          body: [
+            wrapValue(
+              typeof type !== "undefined" ? type : getType(value),
+              value,
+            ),
+          ],
+        },
+        function (err, result) {
+          if (err) {
+            return reject(err);
+          }
+          resolve(result);
+        },
+      );
     });
   }
 
@@ -329,12 +380,12 @@ function addVictronInterfaces(
 
   return {
     emitItemsChanged: () => iface.emit("ItemsChanged", getProperties()),
-    addSettings,
-    removeSettings,
+    addSettings: (settings) => addSettings(bus, settings),
+    removeSettings: (settings) => removeSettings(bus, settings),
     setValue,
     getValue,
     warnings,
   };
 }
 
-module.exports = { addVictronInterfaces };
+module.exports = { addVictronInterfaces, addSettings, removeSettings };
