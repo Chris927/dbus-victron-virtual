@@ -1,6 +1,6 @@
 {
   "name": "dbus-victron-virtual",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Add interoperability with victron dbus to a given dbus interface",
   "main": "src/index.js",
   "type": "commonjs",
