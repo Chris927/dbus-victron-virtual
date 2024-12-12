@@ -288,7 +288,7 @@ function addVictronInterfaces(
     GetValue: function () {
       return Object.entries(declaration.properties || {}).map(([k, v]) => {
         debug("GetValue, definition[k] and v:", definition[k], v);
-        return [k.replace(/^(?!\/)/, "/"), wrapValue(v, definition[k])];
+        return [k.replace(/^(?!\/)/, ""), wrapValue(v, definition[k])];
       });
     },
     emit: function () { },

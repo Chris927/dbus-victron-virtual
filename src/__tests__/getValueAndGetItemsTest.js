@@ -28,8 +28,9 @@ describe("victron-dbus-virtual, GetValue and GetItems being called on us", () =>
     ]);
 
     // GetValue on path / returns all props (therefore nested array)
+    // but without the leading slash
     const rootValueResult = calls[0][0].GetValue();
-    expect(rootValueResult).toEqual([["/IntProp", ["i", 42]]]);
+    expect(rootValueResult).toEqual([["IntProp", ["i", 42]]]);
 
     // GetValue on path /IntProp returns the value as a variant
     const valueResult = calls[1][0].GetValue();
