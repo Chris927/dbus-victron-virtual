@@ -10,6 +10,7 @@ const products = {
   heatpump: 0xc064,
   battery: 0xc065,
   pvinverter: 0xc066,
+  ev: 0xc067,
 };
 
 function getType(value) {
