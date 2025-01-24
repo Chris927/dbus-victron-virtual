@@ -211,15 +211,18 @@ function addVictronInterfaces(
     debug("addDefaults, declaration.name:", declaration.name);
     const productInName = declaration.name.split(".")[2];
     if (!productInName) {
-      throw new Error(
-        `Unable to extract product from name, ensure name is of the form 'com.victronenergy.product.my_name', declaration.name=${declaration.name}`,
+      console.warn(
+        `Unable to extract product from name, ensure name is of the form 'com.victronenergy.product.my_name', declaration.name=${declaration.name}`
       );
+      return;
     }
     const product = products[productInName];
     if (!product) {
-      throw new Error(
-        `Invalid product, ensure product name is in ${products.join(", ")}`,
+      const productNames = Object.keys(products);
+      console.warn(
+        `Invalid product ${productInName}, ensure product name is in ${productNames.join(", ")}`,
       );
+      return;
     }
     declaration["properties"]["Mgmt/Connection"] = "s";
     definition["Mgmt/Connection"] = "Virtual";
