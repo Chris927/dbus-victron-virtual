@@ -14,6 +14,7 @@ const products = {
   gps: 0xc068,
   switch: 0xc069,
   solarcharger: 0xc06a,
+  relay: 0xc06b
 };
 
 function getType(value) {
