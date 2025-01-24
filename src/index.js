@@ -12,8 +12,7 @@ const products = {
   pvinverter: 0xc066,
   ev: 0xc067,
   gps: 0xc068,
-  switch: 0xc069,
-  solarcharger: 0xc06a,
+  switch: 0xc069
 };
 
 function getType(value) {
@@ -222,7 +221,7 @@ function addVictronInterfaces(
       );
     }
     declaration["properties"]["Mgmt/Connection"] = "s";
-    definition["Mgmt/Connection"] = "Virtual";
+    definition["Mgmt/Connection"] = definition["Mgmt/Connection"] || "Virtual";
     declaration["properties"]["Mgmt/ProcessName"] = "s";
     definition["Mgmt/ProcessName"] = packageJson.name;
     declaration["properties"]["Mgmt/ProcessVersion"] = "s";
