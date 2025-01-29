@@ -12,8 +12,7 @@ const products = {
   pvinverter: 0xc066,
   ev: 0xc067,
   gps: 0xc068,
-  switch: 0xc069,
-  solarcharger: 0xc06a,
+  'switch': 0xc069
 };
 
 function getType(value) {
@@ -91,7 +90,8 @@ async function addSettings(bus, settings) {
           setting.default,
         ),
       ],
-      // TODO: incomplete, min and max missing
+      ["min", wrapValue(setting.type || "d", setting.min !== undefined ? setting.min : null)],
+      ["max", wrapValue(setting.type || "d", setting.max !== undefined ? setting.max : null)],
     ]),
   ];
   return await new Promise((resolve, reject) => {
@@ -174,6 +174,44 @@ async function getValue(bus, { path, interface_, destination }) {
         interface: interface_,
         path: path || "/",
         member: "GetValue",
+        destination,
+      },
+      function (err, result) {
+        if (err) {
+          return reject(err);
+        }
+        resolve(result);
+      },
+    );
+  });
+}
+
+async function getMin(bus, { path, interface_, destination }) {
+  return await new Promise((resolve, reject) => {
+    bus.invoke(
+      {
+        interface: interface_,
+        path: path || "/",
+        member: "GetMin",
+        destination,
+      },
+      function (err, result) {
+        if (err) {
+          return reject(err);
+        }
+        resolve(result);
+      },
+    );
+  });
+}
+
+async function getMax(bus, { path, interface_, destination }) {
+  return await new Promise((resolve, reject) => {
+    bus.invoke(
+      {
+        interface: interface_,
+        path: path || "/",
+        member: "GetMax",
         destination,
       },
       function (err, result) {
@@ -311,7 +349,7 @@ function addVictronInterfaces(
 
   bus.exportInterface(iface, "/", ifaceDesc);
 
-  // support GetValue and SetValue for each property
+  // support GetValue, SetValue, GetMin, and GetMax for each property
   for (const [k] of Object.entries(declaration.properties || {})) {
     bus.exportInterface(
       {
@@ -340,6 +378,18 @@ function addVictronInterfaces(
             return -1;
           }
         },
+        GetMin: function () {
+          const v = (declaration.properties || {})[k];
+          // Ensure we return a wrapped null if min is undefined
+          const minValue = (v && v.min !== undefined) ? v.min : null;
+          return wrapValue(v.type || getType(minValue), minValue);
+        },
+        GetMax: function () {
+          const v = (declaration.properties || {})[k];
+          // Ensure we return a wrapped null if max is undefined
+          const maxValue = (v && v.max !== undefined) ? v.max : null;
+          return wrapValue(v.type || getType(maxValue), maxValue);
+        },
       },
       `/${k}`,
       {
@@ -348,6 +398,8 @@ function addVictronInterfaces(
           GetValue: ["", "v", [], ["value"]],
           GetText: ["", "s", [], ["text"]],
           SetValue: ["v", "i", [], []],
+          GetMin: ["", "v", [], ["min"]],
+          GetMax: ["", "v", [], ["max"]],
         },
       },
     );
@@ -361,6 +413,10 @@ function addVictronInterfaces(
       setValue(bus, { path, interface_, destination, value, type }),
     getValue: ({ path, interface_, destination }) =>
       getValue(bus, { path, interface_, destination }),
+    getMin: ({ path, interface_, destination }) =>
+      getMin(bus, { path, interface_, destination }),
+    getMax: ({ path, interface_, destination }) =>
+      getMax(bus, { path, interface_, destination }),
     warnings,
   };
 }
@@ -371,4 +427,6 @@ module.exports = {
   removeSettings,
   getValue,
   setValue,
+  getMin,
+  getMax,
 };
