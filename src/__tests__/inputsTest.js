@@ -70,7 +70,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
     expect(warnings[0].includes("start with com.victronenergy")).toBe(true);
   });
 
-  it("exports GetItems, GetValue, GetText, and SetValue for each property", () => {
+  it("exports GetItems, GetValue, GetText, SetValue, GetMin and GetMax for each property", () => {
     const declaration = {
       name: "some_name",
       properties: {
@@ -98,6 +98,8 @@ describe("victron-dbus-virtual, input parameters tests", () => {
       "GetValue",
       "GetText",
       "SetValue",
+      "GetMin",
+      "GetMax"
     ]);
     expect(call1[1]).toStrictEqual("/foo");
     expect(call1[2].name).toBe("com.victronenergy.BusItem");
