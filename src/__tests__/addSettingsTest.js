@@ -23,6 +23,8 @@ describe("victron-dbus-virtual, addSettings tests, without calling addVictronInt
         [
           ["path", ["s", "/Settings/MySettings/Setting"]],
           ["default", ["i", 3]],
+          ["min", ["d", 0]],
+          ["max", ["d", 10]],
         ],
       ],
     ]);
