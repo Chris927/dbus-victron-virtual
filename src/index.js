@@ -66,14 +66,81 @@ function unwrapValue([t, v]) {
     case "d":
       return Number(v[0]);
     case "ai":
-      if (v[0].length === 0) {
+      if (v.length === 1 && v[0].length === 0) {
         return null;
       }
       throw new Error(
         'Unsupported value type "ai", only supported as empty array',
       );
+    case "a":
+      try {
+        const valueType = t[0].child[0].type;
+        if (v.length === 1 && v[0].length === 0 && valueType === 'i') {
+          // represents a null value
+          return null;
+        }
+      } catch (e) {
+        console.error(e);
+        throw new Error(
+          'Unable to unwrap array value: ' + e
+        )
+      }
+      throw new Error('array value, only empty i value supported, to represent null')
     default:
       throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
+  }
+}
+
+/** validate and possibly convert a new number, received through SetValue or otherwise */
+function validateNewNumber(name, declaration, value) {
+  const number = Number(value);
+  if (isNaN(number)) {
+    throw new Error(`value for ${name} is not a number.`);
+  }
+  if (declaration.max !== undefined && number > declaration.max) {
+    throw new Error(`value for ${name} is too large`);
+  }
+  if (declaration.min !== undefined && number < declaration.min) {
+    throw new Error(`value for ${name} is too small`);
+  }
+  if (declaration.type === "i") {
+    return Math.floor(number);
+  } else {
+    return number;
+  }
+}
+
+/** validate and possibly convert a new value (received through SetValue or otherwise) */
+function validateNewValue(name, declaration, value) {
+
+  // we always allow a null value
+  if (value === null) {
+    return null;
+  }
+
+  try {
+    switch (declaration.type) {
+      case 'b':
+        // we allow boolean values to be set as strings or numbers as well
+        if (value === true || value == 'true' || value == '1') {
+          return true
+        } else if (value === false || value == 'false' || value == '0') {
+          return false
+        }
+        throw new Error(`validation failed for ${name}, type ${declaration.type}, check logs for details.`)
+      case 'i':
+      case 'd':
+        return validateNewNumber(name, declaration, value);
+      case 's':
+      default:
+        // we treat any other type as a string as well
+        return '' + value;
+    }
+  } catch (e) {
+    console.warn(
+      `validation failed for property ${name}, value:`, value
+    )
+    throw e
   }
 }
 
@@ -367,13 +434,13 @@ function addVictronInterfaces(
           return format(definition[k]);
         },
         SetValue: function (value /* msg */) {
-          debug(
+          console.log(
             "SetValue",
             JSON.stringify(arguments[0]),
             JSON.stringify(arguments[1]),
           );
           try {
-            definition[k] = unwrapValue(value);
+            definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
             iface.emit("ItemsChanged", getProperties(true));
             return 0;
           } catch (e) {
@@ -432,4 +499,8 @@ module.exports = {
   setValue,
   getMin,
   getMax,
+  // we export private functions for unit-testing
+  __private__: {
+    validateNewValue
+  }
 };
