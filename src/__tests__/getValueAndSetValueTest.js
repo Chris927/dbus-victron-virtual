@@ -43,9 +43,26 @@ describe("GetValue and SetValue called on us", () => {
     expect(result).toBe(0);
 
     // SetValue on path /SomeProp with an empty int array sets the value on us to null
-    // TODO
+    // TODO:: we support "ai" and {type:"a", child: [{ type"i" }]} for null values. Do we need the former?
+    // first approach of setting value to null
     const nullResult = calls[1][0].SetValue([[{ type: "ai" }], [[]]]);
     expect(definition.SomeProp).toEqual(null);
     expect(nullResult).toBe(0);
+    // second approach of setting value to null
+    const null2Result = calls[1][0].SetValue([
+      [{ type: "a", child: [{ type: "i" }] }],
+      [[]],
+    ]);
+    expect(definition.SomeProp).toEqual(null);
+    expect(null2Result).toBe(0);
+
+    // fails when having invalid data (and a non-empty int array is considered invalid)
+    expect(calls[1][0].SetValue([[{ type: "a", child: [] }], [[]]])).toBe(-1); // -1 denotes failure
+    expect(
+      calls[1][0].SetValue([[{ type: "a", child: [{ type: "d" }] }], [[]]]),
+    ).toBe(-1); // -1 denotes failure
+    expect(
+      calls[1][0].SetValue([[{ type: "a", child: [{ type: "i" }] }], [[1]]]),
+    ).toBe(-1);
   });
 });
