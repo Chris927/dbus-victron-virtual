@@ -66,12 +66,26 @@ function unwrapValue([t, v]) {
     case "d":
       return Number(v[0]);
     case "ai":
-      if (v[0].length === 0) {
+      if (v.length === 1 && v[0].length === 0) {
         return null;
       }
       throw new Error(
         'Unsupported value type "ai", only supported as empty array',
       );
+    case "a":
+      try {
+        const valueType = t[0].child[0].type;
+        if (v.length === 1 && v[0].length === 0 && valueType === 'i') {
+          // represents a null value
+          return null;
+        }
+      } catch (e) {
+        console.error(e);
+        throw new Error(
+          'Unable to unwrap array value: ' + e
+        )
+      }
+      throw new Error('array value, only empty i value supported, to represent null')
     default:
       throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
   }
