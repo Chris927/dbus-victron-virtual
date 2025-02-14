@@ -35,5 +35,8 @@
   "dependencies": {
     "dbus-native-victron": "^0.4.3",
     "debug": "^4.3.7"
-  }
+  },
+  "files": [
+    "src/index.js"
+  ]
 }
