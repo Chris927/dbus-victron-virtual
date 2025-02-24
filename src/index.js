@@ -377,14 +377,21 @@ function addVictronInterfaces(
     }
   };
 
-  // we use this for GetItems and ItemsChanged. If 'items' is true, we prepend a slash to the key
-  function getProperties(items = false) {
-    return Object.entries(declaration.properties || {}).map(([k, v]) => {
+  // we use this for GetItems and ItemsChanged.
+  function getProperties(specificItem = null) {
+    // Filter entries based on specificItem if provided
+    const entries = Object.entries(declaration.properties || {});
+    const filteredEntries = specificItem
+      ? entries.filter(([k, _]) => k === specificItem)
+      : entries;
+
+    return filteredEntries.map(([k, v]) => {
       debug("getProperties, entries, (k,v):", k, v);
 
       const format = getFormatFunction(v);
       return [
-        items ? k.replace(/^(?!\/)/, "/") : k,
+        // Add leading slash only if we're filtering for a specific item
+        specificItem ? k.replace(/^(?!\/)/, "/") : k,
         [
           ["Value", wrapValue(v, definition[k])],
           ["Text", ["s", format(definition[k])]],
@@ -395,7 +402,7 @@ function addVictronInterfaces(
 
   const iface = {
     GetItems: function () {
-      return getProperties(true);
+      return getProperties();
     },
     GetValue: function () {
       return Object.entries(declaration.properties || {}).map(([k, v]) => {
@@ -434,14 +441,9 @@ function addVictronInterfaces(
           return format(definition[k]);
         },
         SetValue: function (value /* msg */) {
-          console.log(
-            "SetValue",
-            JSON.stringify(arguments[0]),
-            JSON.stringify(arguments[1]),
-          );
           try {
             definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
-            iface.emit("ItemsChanged", getProperties(true));
+            iface.emit("ItemsChanged", getProperties(k));
             return 0;
           } catch (e) {
             console.error(e);
