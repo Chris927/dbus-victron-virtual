@@ -378,11 +378,11 @@ function addVictronInterfaces(
   };
 
   // we use this for GetItems and ItemsChanged.
-  function getProperties(specificItem = null) {
+  function getProperties(specificItem = null, prependSlash = false) {
     // Filter entries based on specificItem if provided
     const entries = Object.entries(declaration.properties || {});
     const filteredEntries = specificItem
-      ? entries.filter(([k, _]) => k === specificItem)
+      ? entries.filter(([k, ]) => k === specificItem)
       : entries;
 
     return filteredEntries.map(([k, v]) => {
@@ -391,7 +391,7 @@ function addVictronInterfaces(
       const format = getFormatFunction(v);
       return [
         // Add leading slash only if we're filtering for a specific item
-        specificItem ? k.replace(/^(?!\/)/, "/") : k,
+        prependSlash ? k.replace(/^(?!\/)/, "/") : k,
         [
           ["Value", wrapValue(v, definition[k])],
           ["Text", ["s", format(definition[k])]],
@@ -402,7 +402,7 @@ function addVictronInterfaces(
 
   const iface = {
     GetItems: function () {
-      return getProperties();
+      return getProperties(null, true);
     },
     GetValue: function () {
       return Object.entries(declaration.properties || {}).map(([k, v]) => {
@@ -443,7 +443,7 @@ function addVictronInterfaces(
         SetValue: function (value /* msg */) {
           try {
             definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
-            iface.emit("ItemsChanged", getProperties(k));
+            iface.emit("ItemsChanged", getProperties(k, true));
             return 0;
           } catch (e) {
             console.error(e);
