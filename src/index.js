@@ -12,7 +12,9 @@ const products = {
   pvinverter: 0xc066,
   ev: 0xc067,
   gps: 0xc068,
-  'switch': 0xc069
+  'switch': 0xc069,
+  acload: 0xc06a,
+  genset: 0xc06b
 };
 
 function getType(value) {
