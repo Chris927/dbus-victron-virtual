@@ -14,7 +14,8 @@ const products = {
   gps: 0xc068,
   'switch': 0xc069,
   acload: 0xc06a,
-  genset: 0xc06b
+  genset: 0xc06b,
+  motordrive: 0xc06c
 };
 
 function getType(value) {
