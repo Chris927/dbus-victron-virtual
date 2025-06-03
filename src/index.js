@@ -15,7 +15,8 @@ const products = {
   'switch': 0xc069,
   acload: 0xc06a,
   genset: 0xc06b,
-  motordrive: 0xc06c
+  motordrive: 0xc06c,
+  dcgenset: 0xc06d
 };
 
 function getType(value) {
