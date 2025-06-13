@@ -176,7 +176,7 @@ async function addSettings(bus, settings) {
         signature: "aa{sv}",
         body: body,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -200,7 +200,7 @@ async function removeSettings(bus, settings) {
         signature: "as",
         body: body,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -228,7 +228,7 @@ async function setValue(bus, { path, interface_, destination, value, type }) {
           wrapValue(typeof type !== "undefined" ? type : getType(value), value),
         ],
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -247,7 +247,7 @@ async function getValue(bus, { path, interface_, destination }) {
         member: "GetValue",
         destination,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -266,7 +266,7 @@ async function getMin(bus, { path, interface_, destination }) {
         member: "GetMin",
         destination,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -285,7 +285,7 @@ async function getMax(bus, { path, interface_, destination }) {
         member: "GetMax",
         destination,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -300,6 +300,7 @@ function addVictronInterfaces(
   declaration,
   definition,
   add_defaults = true,
+  emitCallback = null
 ) {
   const warnings = [];
 
@@ -386,7 +387,7 @@ function addVictronInterfaces(
     // Filter entries based on specificItem if provided
     const entries = Object.entries(declaration.properties || {});
     const filteredEntries = specificItem
-      ? entries.filter(([k, ]) => k === specificItem)
+      ? entries.filter(([k,]) => k === specificItem)
       : entries;
 
     return filteredEntries.map(([k, v]) => {
@@ -405,16 +406,21 @@ function addVictronInterfaces(
   }
 
   const iface = {
-    GetItems: function () {
+    GetItems: function() {
       return getProperties(null, true);
     },
-    GetValue: function () {
+    GetValue: function() {
       return Object.entries(declaration.properties || {}).map(([k, v]) => {
         debug("GetValue, definition[k] and v:", definition[k], v);
         return [k.replace(/^(?!\/)/, ""), wrapValue(v, definition[k])];
       });
     },
-    emit: function () { },
+    emit: function(name, args) {
+      debug("emit called, name:", name, "args:", args);
+      if (emitCallback) {
+        emitCallback(name, args);
+      }
+    },
   };
 
   const ifaceDesc = {
@@ -434,17 +440,17 @@ function addVictronInterfaces(
   for (const [k] of Object.entries(declaration.properties || {})) {
     bus.exportInterface(
       {
-        GetValue: function (/* value, msg */) {
+        GetValue: function(/* value, msg */) {
           const v = (declaration.properties || {})[k];
           debug("GetValue, definition[k] and v:", definition[k], v);
           return wrapValue(v, definition[k]);
         },
-        GetText: function () {
+        GetText: function() {
           const v = (declaration.properties || {})[k];
           const format = getFormatFunction(v);
           return format(definition[k]);
         },
-        SetValue: function (value /* msg */) {
+        SetValue: function(value /* msg */) {
           try {
             definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
             iface.emit("ItemsChanged", getProperties(k, true));
@@ -454,13 +460,13 @@ function addVictronInterfaces(
             return -1;
           }
         },
-        GetMin: function () {
+        GetMin: function() {
           const v = (declaration.properties || {})[k];
           // Ensure we return a wrapped null if min is undefined
           const minValue = (v && v.min !== undefined) ? v.min : null;
           return wrapValue(v.type || getType(minValue), minValue);
         },
-        GetMax: function () {
+        GetMax: function() {
           const v = (declaration.properties || {})[k];
           // Ensure we return a wrapped null if max is undefined
           const maxValue = (v && v.max !== undefined) ? v.max : null;
