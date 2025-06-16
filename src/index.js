@@ -300,6 +300,7 @@ function addVictronInterfaces(
   declaration,
   definition,
   add_defaults = true,
+  emitCallback = null
 ) {
   const warnings = [];
 
@@ -414,7 +415,12 @@ function addVictronInterfaces(
         return [k.replace(/^(?!\/)/, ""), wrapValue(v, definition[k])];
       });
     },
-    emit: function () { },
+    emit: function(name, args) {
+      debug("emit called, name:", name, "args:", args);
+      if (emitCallback) {
+        emitCallback(name, args);
+      }
+    },
   };
 
   const ifaceDesc = {

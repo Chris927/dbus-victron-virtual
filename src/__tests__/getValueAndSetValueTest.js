@@ -65,4 +65,43 @@ describe("GetValue and SetValue called on us", () => {
       calls[1][0].SetValue([[{ type: "a", child: [{ type: "i" }] }], [[1]]]),
     ).toBe(-1);
   });
+  it("calls us back when SetValue is called, if there is a callback", () => {
+    const declaration = { name: "foo", properties: { SomeProp: { type: "s" }, SomeIntProp: { type: "i" } } };
+    const definition = { SomeProp: "some text" };
+    const bus = {
+      exportInterface: jest.fn(),
+    };
+
+    const callback = jest.fn();
+    addVictronInterfaces(bus, declaration, definition, false, callback);
+
+    // SetValue on path /SomeProp calls the callback
+    bus.exportInterface.mock.calls[1][0].SetValue([[{ type: "s" }], ["new text"]]);
+    expect(callback.mock.calls.length).toBe(1);
+    expect(callback.mock.calls[0][0]).toEqual("ItemsChanged");
+    expect(callback.mock.calls[0][1]).toEqual([
+      [
+        "/SomeProp",
+        [
+          ["Value", ["s", "new text"]],
+          ["Text", ["s", "new text"]],
+        ],
+      ],
+    ]);
+
+    // SetValue on /SomeIntProp calls the callback, and the value is formatted as an int
+    bus.exportInterface.mock.calls[2][0].SetValue([[{ type: "i" }], [42.2]]);
+    expect(callback.mock.calls.length).toBe(2);
+    expect(callback.mock.calls[1][0]).toEqual("ItemsChanged");
+    expect(callback.mock.calls[1][1]).toEqual([
+      [
+        "/SomeIntProp",
+        [
+          ["Value", ["i", 42]],
+          ["Text", ["s", "42"]],
+        ],
+      ],
+    ]);
+
+  });
 });
