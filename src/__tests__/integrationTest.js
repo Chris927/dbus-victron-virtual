@@ -90,12 +90,37 @@ describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
 
     expect(iface.StringProp1).toEqual("new value from client");
 
+    // call setValues from a client
+    await new Promise((resolve, reject) => {
+      clientBus.invoke({
+        path: '/',
+        destination: serviceName,
+        interface: 'com.victronenergy.BusItem',
+        member: 'SetValues',
+        signature: 'a{sv}',
+        body: [[
+          ["/StringProp1", ["s", "new value from SetValues"]],
+          ["/IntValue", ["i", 43]],
+        ]],
+      }, (err) => {
+        if (err) {
+          return reject(new Error(`Failed to call SetValues: ${err}`));
+        }
+        return resolve();
+      })
+    });
+
+    expect(iface.StringProp1).toEqual("new value from SetValues");
+    expect(iface.IntValue).toEqual(43);
+
+    await new Promise((res) => setTimeout(res, 2_000));
+
     // end connections
     serviceBus.connection.end();
     clientBus.connection.end();
 
     // wait a bit more, until all logs are written
-    await new Promise((res) => setTimeout(res, 2_000));
+    await new Promise((res) => setTimeout(res, 4_000));
 
   }, 20_000);
 
