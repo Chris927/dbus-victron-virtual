@@ -47,10 +47,19 @@ You can develop on a device that runs [Venus OS](https:/.com/victronenergy/venus
 
 - clone the repository
 - `npm install`
+
+The implementation is in `./src/index.js`, tests are in `./src/__tests__`.
+
+## Testing
+
 - `npm run test`
 - run tests and include running integration tests with `DBUS_SESSION_BUS_ADDRESS=unix:socket=/var/run/dbus/system_bus_socket TEST_INTEGRATION=1 npm run test`
 
-The implementation is in `./src/index.js`, tests are in `./src/__tests__`.
+To run only the integration tests, use [jest's](https://jestjs.io/docs/cli) `-t` option, and specify which host/port to use (if running remotely):
+
+```bash
+DBUS_ADDRESS='tcp:host=venus.local,port=78' TEST_INTEGRATION=1 npm run test -- -t 'integration'
+```
 
 Test coverage stats for unit and integration tests (append ` -- --coverage` to the test command):
 

@@ -4,7 +4,101 @@ const { addVictronInterfaces } = require("../index");
 const describeIf = (condition, ...args) =>
   condition ? describe(...args) : describe.skip(...args);
 
+function createIntegrationTestDbusClient() {
+  const bus = process.env.DBUS_ADDRESS ? dbus.createClient({
+    busAddress: process.env.DBUS_ADDRESS,
+    authMethods: ["ANONYMOUS"],
+  }) : dbus.sessionBus();
+  return bus;
+}
+
+async function requestServiceName(bus, serviceName) {
+  return await new Promise((resolve, reject) => {
+    bus.requestName(serviceName, 0x4, (err, retCode) => {
+      if (err) {
+        return reject(
+          new Error(
+            `Could not request service name ${serviceName}, the error was: ${err}.`,
+          ),
+        );
+      }
+
+      if (retCode === 1) {
+        console.log(`Successfully requested service name "${serviceName}"`);
+        resolve();
+      } else {
+        return reject(
+          new Error(
+            `Failed to request service name "${serviceName}". Check what return code "${retCode}" means.`,
+          ),
+        );
+      }
+    });
+  });
+}
+
 describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
+
+  test("call SetValue from a dbus client on our victron interface", async () => {
+
+    const serviceBus = createIntegrationTestDbusClient();
+    const clientBus = createIntegrationTestDbusClient();
+
+    const serviceName = "com.victronenergy.temperature.integration_test_set_value";
+
+    // TODO: the service name with '/' instead of '.' seems to be used for emitting signals only, it might be unnecessary
+    const objectPath = `/${serviceName.replace(/\./g, "/")}`;
+
+    var ifaceDesc = {
+      name: serviceName,
+      properties: {
+        Flag1: "b",
+        StringProp1: "s",
+        IntValue: "i",
+      },
+    };
+
+    const iface = {
+      Flag1: true,
+      StringProp1: "initial string",
+      IntValue: 42,
+      emit: function() { },
+    }
+
+    await requestServiceName(serviceBus, serviceName);
+
+    serviceBus.exportInterface(iface, objectPath, ifaceDesc);
+
+    addVictronInterfaces(serviceBus, ifaceDesc, iface);
+
+    // call setValue from a client
+    await new Promise((resolve, reject) => {
+      clientBus.invoke({
+        path: '/StringProp1',
+        destination: serviceName,
+        interface: 'com.victronenergy.BusItem',
+        member: 'SetValue',
+        signature: 'v',
+        body: [['s', 'new value from client']],
+      }, (err) => {
+        if (err) {
+          return reject(new Error(`Failed to call SetValue: ${err}`));
+        }
+        return resolve();
+      })
+    });
+
+    expect(iface.StringProp1).toEqual("new value from client");
+
+    // end connections
+    serviceBus.connection.end();
+    clientBus.connection.end();
+
+    // wait a bit more, until all logs are written
+    await new Promise((res) => setTimeout(res, 2_000));
+
+  }, 20_000);
+
   test("this is a dummy integration test", async () => {
     // example adopted from https://github.com/sidorares/dbus-native/blob/master/examples/basic-service.js
     const serviceName =
@@ -12,40 +106,17 @@ describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
     const interfaceName = serviceName;
     const objectPath = `/${serviceName.replace(/\./g, "/")}`;
 
-    const sessionBus = dbus.sessionBus();
-    if (!sessionBus) {
+    const bus = process.env.DBUS_ADDRESS ? dbus.createClient({
+      busAddress: process.env.DBUS_ADDRESS,
+      authMethods: ["ANONYMOUS"],
+    }) : dbus.sessionBus();
+
+    if (!bus) {
       throw new Error("Could not connect to the DBus session bus.");
     }
 
     // request service name from the bus
-    await new Promise((resolve, reject) => {
-      sessionBus.requestName(serviceName, 0x4, (err, retCode) => {
-        // If there was an error, warn user and fail
-        if (err) {
-          return reject(
-            new Error(
-              `Could not request service name ${serviceName}, the error was: ${err}.`,
-            ),
-          );
-        }
-
-        // Return code 0x1 means we successfully had the name
-        if (retCode === 1) {
-          console.log(`Successfully requested service name "${serviceName}"!`);
-          resolve();
-        } else {
-          /* Other return codes means various errors, check here
-        (https://dbus.freedesktop.org/doc/api/html/group__DBusShared.html#ga37a9bc7c6eb11d212bf8d5e5ff3b50f9) for more
-        information
-        */
-          return reject(
-            new Error(
-              `Failed to request service name "${serviceName}". Check what return code "${retCode}" means.`,
-            ),
-          );
-        }
-      });
-    });
+    await requestServiceName(bus, serviceName);
 
     // First, we need to create our interface description (here we will only expose method calls)
     var ifaceDesc = {
@@ -68,25 +139,25 @@ describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
 
     // Then we need to create the interface implementation (with actual functions)
     var iface = {
-      SayHello: function () {
+      SayHello: function() {
         return "Hello, world!";
       },
-      GiveTime: function () {
+      GiveTime: function() {
         return new Date().toString();
       },
-      Capitalize: function (str) {
+      Capitalize: function(str) {
         return str.toUpperCase();
       },
       Flag: true,
       StringProp: "initial string",
       RandValue: 43,
-      emit: function () {
+      emit: function() {
         // no nothing, as usual
       },
     };
 
     // Now we need to actually export our interface on our object
-    sessionBus.exportInterface(iface, objectPath, ifaceDesc);
+    bus.exportInterface(iface, objectPath, ifaceDesc);
 
     // Then we can add the required Victron interfaces, and receive some funtions to use
     const {
@@ -95,7 +166,7 @@ describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
       removeSettings,
       getValue,
       setValue,
-    } = addVictronInterfaces(sessionBus, ifaceDesc, iface);
+    } = addVictronInterfaces(bus, ifaceDesc, iface);
 
     console.log("Interface exposed to DBus, ready to receive function calls!");
 
@@ -151,7 +222,7 @@ describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
     }
 
     await proceed();
-    sessionBus.connection.end();
+    bus.connection.end();
 
     // wait a bit more, until all logs are written
     await new Promise((res) => setTimeout(res, 2_000));
