@@ -443,6 +443,24 @@ function addVictronInterfaces(
     },
   };
 
+  function setValuesLocally(values) {
+
+    console.log(`setValuesLocally called with values:`, values);
+
+    if (Object.keys(values).length === 0) {
+      throw new Error("No values provided to setValuesLocally.");
+    }
+
+    for (const k of Object.keys(values)) {
+      if (!declaration.properties || !declaration.properties[k]) {
+        throw new Error(`Property ${k} not found in properties.`);
+      }
+      definition[k] = validateNewValue(k, declaration.properties[k], values[k]);
+    }
+    console.log(`setValuesLocally updated definition:`, definition);
+    iface.emit("ItemsChanged", getProperties(null, true));
+  }
+
   const ifaceDesc = {
     name: "com.victronenergy.BusItem",
     methods: {
@@ -510,6 +528,7 @@ function addVictronInterfaces(
 
   return {
     emitItemsChanged: () => iface.emit("ItemsChanged", getProperties()),
+    setValuesLocally,
     addSettings: (settings) => addSettings(bus, settings),
     removeSettings: (settings) => removeSettings(bus, settings),
     setValue: ({ path, interface_, destination, value, type }) =>
