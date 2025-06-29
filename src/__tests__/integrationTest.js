@@ -99,8 +99,8 @@ describeIf(process.env.TEST_INTEGRATION, "run integration tests", () => {
         member: 'SetValues',
         signature: 'a{sv}',
         body: [[
-          ["/StringProp1", ["s", "new value from SetValues"]],
-          ["/IntValue", ["i", 43]],
+          ["StringProp1", ["s", "new value from SetValues"]],
+          ["IntValue", ["i", 43]],
         ]],
       }, (err) => {
         if (err) {
