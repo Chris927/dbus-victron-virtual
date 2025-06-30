@@ -3,7 +3,7 @@ const { addVictronInterfaces } = require("../index");
 
 describe("victron-dbus-virtual, setValuesLocally", () => {
   it("works for the happy case", async () => {
-    const declaration = { name: "foo", properties: { SomeProp: "s" } };
+    const declaration = { name: "foo", properties: { SomeProp: "s", OtherProp: "i" } };
     const definition = { SomeProp: "my text" };
     const bus = {
       exportInterface: jest.fn(),
@@ -19,7 +19,7 @@ describe("victron-dbus-virtual, setValuesLocally", () => {
 
     expect(definition.SomeProp).toBe("text changed");
 
-    // ensure ItemsChanged is emitted
+    // ensure ItemsChanged is emitted, and only 'SomeProp' is included, not 'OtherProp'
     expect(cb).toHaveBeenCalledWith("ItemsChanged", [["/SomeProp", [['Value', ['s', 'text changed']], ['Text', ['s', 'text changed']]]]]);
 
   })

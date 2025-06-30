@@ -390,11 +390,11 @@ function addVictronInterfaces(
   };
 
   // we use this for GetItems and ItemsChanged.
-  function getProperties(specificItem = null, prependSlash = false) {
+  function getProperties(limitToPropertyNames = [], prependSlash = false) {
     // Filter entries based on specificItem if provided
     const entries = Object.entries(declaration.properties || {});
-    const filteredEntries = specificItem
-      ? entries.filter(([k,]) => k === specificItem)
+    const filteredEntries = (limitToPropertyNames || []).length > 0
+      ? entries.filter(([k,]) => limitToPropertyNames.includes(k))
       : entries;
 
     return filteredEntries.map(([k, v]) => {
@@ -432,7 +432,7 @@ function addVictronInterfaces(
       }
       debug(`SetValues updated definition:`, definition);
       // TODO: we must include changed values only.
-      iface.emit("ItemsChanged", getProperties(null, true));
+      iface.emit("ItemsChanged", getProperties(Object.keys(values), true));
       return 0;
     },
     emit: function(name, args) {
@@ -458,7 +458,7 @@ function addVictronInterfaces(
       definition[k] = validateNewValue(k, declaration.properties[k], values[k]);
     }
     debug(`setValuesLocally updated definition:`, definition);
-    iface.emit("ItemsChanged", getProperties(null, true));
+    iface.emit("ItemsChanged", getProperties(Object.keys(values), true));
   }
 
   const ifaceDesc = {
@@ -492,7 +492,7 @@ function addVictronInterfaces(
         SetValue: function(value /* msg */) {
           try {
             definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
-            iface.emit("ItemsChanged", getProperties(k, true));
+            iface.emit("ItemsChanged", getProperties([k], true));
             return 0;
           } catch (e) {
             console.error(e);
