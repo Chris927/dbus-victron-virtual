@@ -117,9 +117,9 @@ function validateNewNumber(name, declaration, value) {
 /** validate and possibly convert a new value (received through SetValue or otherwise) */
 function validateNewValue(name, declaration, value) {
 
-  console.log('validateNewValue called, name:', name, 'declaration:', declaration, 'value:', value);
+  debug('validateNewValue called, name:', name, 'declaration:', declaration, 'value:', value);
 
-  // TODO: this is used inconsistently, sometimes declarataion is just a type ('s' or 'i'), sometimes it is an object with a type property.
+  // we allow the declaration to be just a type ('s' or 'i'), or an object with a 'type'property, e.g. { type: 's' }.
   const type = declaration.type === undefined ? declaration : declaration.type;
 
   // we always allow a null value
@@ -322,7 +322,7 @@ function addVictronInterfaces(
     warnings.push("Interface name should start with com.victronenergy");
   }
 
-  console.log(`declaration.properties:`, declaration.properties);
+  debug(`addVictronInterfaces:`, declaration, definition, add_defaults);
 
   function addDefaults() {
     debug("addDefaults, declaration.name:", declaration.name);
@@ -423,14 +423,14 @@ function addVictronInterfaces(
       });
     },
     SetValues: function(values /* msg */) {
-      console.log(`SetValues called with values:`, values);
+      debug(`SetValues called with values:`, values);
       for (const [k, value] of values) {
         if (!declaration.properties || !declaration.properties[k]) {
           throw new Error(`Property ${k} not found in properties.`);
         }
         definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
       }
-      console.log(`SetValues updated definition:`, definition);
+      debug(`SetValues updated definition:`, definition);
       // TODO: we must include changed values only.
       iface.emit("ItemsChanged", getProperties(null, true));
       return 0;
@@ -445,7 +445,7 @@ function addVictronInterfaces(
 
   function setValuesLocally(values) {
 
-    console.log(`setValuesLocally called with values:`, values);
+    debug(`setValuesLocally called with values:`, values);
 
     if (Object.keys(values).length === 0) {
       throw new Error("No values provided to setValuesLocally.");
@@ -457,7 +457,7 @@ function addVictronInterfaces(
       }
       definition[k] = validateNewValue(k, declaration.properties[k], values[k]);
     }
-    console.log(`setValuesLocally updated definition:`, definition);
+    debug(`setValuesLocally updated definition:`, definition);
     iface.emit("ItemsChanged", getProperties(null, true));
   }
 
