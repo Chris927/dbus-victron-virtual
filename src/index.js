@@ -117,13 +117,18 @@ function validateNewNumber(name, declaration, value) {
 /** validate and possibly convert a new value (received through SetValue or otherwise) */
 function validateNewValue(name, declaration, value) {
 
+  debug('validateNewValue called, name:', name, 'declaration:', declaration, 'value:', value);
+
+  // we allow the declaration to be just a type ('s' or 'i'), or an object with a 'type'property, e.g. { type: 's' }.
+  const type = declaration.type === undefined ? declaration : declaration.type;
+
   // we always allow a null value
   if (value === null) {
     return null;
   }
 
   try {
-    switch (declaration.type) {
+    switch (type) {
       case 'b':
         // we allow boolean values to be set as strings or numbers as well
         if (value === true || value == 'true' || value == '1') {
@@ -176,7 +181,7 @@ async function addSettings(bus, settings) {
         signature: "aa{sv}",
         body: body,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -200,7 +205,7 @@ async function removeSettings(bus, settings) {
         signature: "as",
         body: body,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -228,7 +233,7 @@ async function setValue(bus, { path, interface_, destination, value, type }) {
           wrapValue(typeof type !== "undefined" ? type : getType(value), value),
         ],
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -247,7 +252,7 @@ async function getValue(bus, { path, interface_, destination }) {
         member: "GetValue",
         destination,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -266,7 +271,7 @@ async function getMin(bus, { path, interface_, destination }) {
         member: "GetMin",
         destination,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -285,7 +290,7 @@ async function getMax(bus, { path, interface_, destination }) {
         member: "GetMax",
         destination,
       },
-      function (err, result) {
+      function(err, result) {
         if (err) {
           return reject(err);
         }
@@ -316,6 +321,8 @@ function addVictronInterfaces(
   if (!declaration.name.match(/^com.victronenergy/)) {
     warnings.push("Interface name should start with com.victronenergy");
   }
+
+  debug(`addVictronInterfaces:`, declaration, definition, add_defaults);
 
   function addDefaults() {
     debug("addDefaults, declaration.name:", declaration.name);
@@ -383,11 +390,11 @@ function addVictronInterfaces(
   };
 
   // we use this for GetItems and ItemsChanged.
-  function getProperties(specificItem = null, prependSlash = false) {
+  function getProperties(limitToPropertyNames = [], prependSlash = false) {
     // Filter entries based on specificItem if provided
     const entries = Object.entries(declaration.properties || {});
-    const filteredEntries = specificItem
-      ? entries.filter(([k, ]) => k === specificItem)
+    const filteredEntries = (limitToPropertyNames || []).length > 0
+      ? entries.filter(([k,]) => limitToPropertyNames.includes(k))
       : entries;
 
     return filteredEntries.map(([k, v]) => {
@@ -406,14 +413,27 @@ function addVictronInterfaces(
   }
 
   const iface = {
-    GetItems: function () {
+    GetItems: function() {
       return getProperties(null, true);
     },
-    GetValue: function () {
+    GetValue: function() {
       return Object.entries(declaration.properties || {}).map(([k, v]) => {
         debug("GetValue, definition[k] and v:", definition[k], v);
         return [k.replace(/^(?!\/)/, ""), wrapValue(v, definition[k])];
       });
+    },
+    SetValues: function(values /* msg */) {
+      debug(`SetValues called with values:`, values);
+      for (const [k, value] of values) {
+        if (!declaration.properties || !declaration.properties[k]) {
+          throw new Error(`Property ${k} not found in properties.`);
+        }
+        definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
+      }
+      debug(`SetValues updated definition:`, definition);
+      // TODO: we must include changed values only.
+      iface.emit("ItemsChanged", getProperties(Object.keys(values), true));
+      return 0;
     },
     emit: function(name, args) {
       debug("emit called, name:", name, "args:", args);
@@ -423,11 +443,36 @@ function addVictronInterfaces(
     },
   };
 
+  function setValuesLocally(values) {
+
+    debug(`setValuesLocally called with values:`, values);
+
+    if (Object.keys(values).length === 0) {
+      throw new Error("No values provided to setValuesLocally.");
+    }
+
+    const sanitizedValues = {};
+    for (const [key, value] of Object.entries(values)) {
+      const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+      sanitizedValues[cleanKey] = value;
+    }
+
+    for (const k of Object.keys(sanitizedValues)) {
+      if (!declaration.properties || !declaration.properties[k]) {
+        throw new Error(`Property ${k} not found in properties.`);
+      }
+      definition[k] = validateNewValue(k, declaration.properties[k], sanitizedValues[k]);
+    }
+    debug(`setValuesLocally updated definition:`, definition);
+    iface.emit("ItemsChanged", getProperties(Object.keys(sanitizedValues), true));
+  }
+
   const ifaceDesc = {
     name: "com.victronenergy.BusItem",
     methods: {
       GetItems: ["", "a{sa{sv}}", [], ["items"]],
       GetValue: ["", "a{sv}", [], ["value"]],
+      SetValues: ["a{sv}", "i", [], []],
     },
     signals: {
       ItemsChanged: ["a{sa{sv}}", "", [], []],
@@ -440,33 +485,33 @@ function addVictronInterfaces(
   for (const [k] of Object.entries(declaration.properties || {})) {
     bus.exportInterface(
       {
-        GetValue: function (/* value, msg */) {
+        GetValue: function(/* value, msg */) {
           const v = (declaration.properties || {})[k];
           debug("GetValue, definition[k] and v:", definition[k], v);
           return wrapValue(v, definition[k]);
         },
-        GetText: function () {
+        GetText: function() {
           const v = (declaration.properties || {})[k];
           const format = getFormatFunction(v);
           return format(definition[k]);
         },
-        SetValue: function (value /* msg */) {
+        SetValue: function(value /* msg */) {
           try {
             definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
-            iface.emit("ItemsChanged", getProperties(k, true));
+            iface.emit("ItemsChanged", getProperties([k], true));
             return 0;
           } catch (e) {
             console.error(e);
             return -1;
           }
         },
-        GetMin: function () {
+        GetMin: function() {
           const v = (declaration.properties || {})[k];
           // Ensure we return a wrapped null if min is undefined
           const minValue = (v && v.min !== undefined) ? v.min : null;
           return wrapValue(v.type || getType(minValue), minValue);
         },
-        GetMax: function () {
+        GetMax: function() {
           const v = (declaration.properties || {})[k];
           // Ensure we return a wrapped null if max is undefined
           const maxValue = (v && v.max !== undefined) ? v.max : null;
@@ -489,6 +534,7 @@ function addVictronInterfaces(
 
   return {
     emitItemsChanged: () => iface.emit("ItemsChanged", getProperties()),
+    setValuesLocally,
     addSettings: (settings) => addSettings(bus, settings),
     removeSettings: (settings) => removeSettings(bus, settings),
     setValue: ({ path, interface_, destination, value, type }) =>

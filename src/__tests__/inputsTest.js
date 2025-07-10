@@ -40,7 +40,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
     const definition = {
       foo: 42,
       bar: "hello",
-      emit: function () { },
+      emit: function() { },
     };
     const result = addVictronInterfaces(
       noopBus,
@@ -90,6 +90,7 @@ describe("victron-dbus-virtual, input parameters tests", () => {
     expect(Object.keys(call0[0])).toStrictEqual([
       "GetItems",
       "GetValue",
+      "SetValues",
       "emit",
     ]);
 
