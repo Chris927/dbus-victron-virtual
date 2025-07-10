@@ -451,14 +451,20 @@ function addVictronInterfaces(
       throw new Error("No values provided to setValuesLocally.");
     }
 
-    for (const k of Object.keys(values)) {
+    const sanitizedValues = {};
+    for (const [key, value] of Object.entries(values)) {
+      const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+      sanitizedValues[cleanKey] = value;
+    }
+
+    for (const k of Object.keys(sanitizedValues)) {
       if (!declaration.properties || !declaration.properties[k]) {
         throw new Error(`Property ${k} not found in properties.`);
       }
-      definition[k] = validateNewValue(k, declaration.properties[k], values[k]);
+      definition[k] = validateNewValue(k, declaration.properties[k], sanitizedValues[k]);
     }
     debug(`setValuesLocally updated definition:`, definition);
-    iface.emit("ItemsChanged", getProperties(Object.keys(values), true));
+    iface.emit("ItemsChanged", getProperties(Object.keys(sanitizedValues), true));
   }
 
   const ifaceDesc = {
