@@ -3,20 +3,20 @@ const path = require("path");
 const packageJson = require(path.join(__dirname, "../", "package.json"));
 
 const products = {
-  temperature: 0xc060,
-  meteo: 0xc061,
-  grid: 0xc062,
-  tank: 0xc063,
-  heatpump: 0xc064,
-  battery: 0xc065,
-  pvinverter: 0xc066,
-  ev: 0xc067,
-  gps: 0xc068,
-  'switch': 0xc069,
-  acload: 0xc06a,
-  genset: 0xc06b,
-  motordrive: 0xc06c,
-  dcgenset: 0xc06d
+  temperature: { id: 0xc060, name: 'temperature sensor' },
+  meteo: { id: 0xc061 },
+  grid: { id: 0xc062, name: 'grid meter'},
+  tank: { id: 0xc063, name: 'tank sensor'},
+  heatpump: { id: 0xc064 },
+  battery: { id: 0xc065 },
+  pvinverter: { id: 0xc066, name: 'PV inverter' },
+  ev: { id: 0xc067, name: 'EV' },
+  gps: { id: 0xc068, name: 'GPS' },
+  'switch': { id: 0xc069 },
+  acload: { id: 0xc06a, name: 'AC load' },
+  genset: { id: 0xc06b },
+  motordrive: { id: 0xc06c },
+  dcgenset: { id: 0xc06d, name: 'DC genset' }
 };
 
 function getType(value) {
@@ -342,7 +342,7 @@ function addVictronInterfaces(
       return;
     }
     declaration["properties"]["Mgmt/Connection"] = "s";
-    definition["Mgmt/Connection"] = "Virtual";
+    definition["Mgmt/Connection"] = "Node-RED";
     declaration["properties"]["Mgmt/ProcessName"] = "s";
     definition["Mgmt/ProcessName"] = packageJson.name;
     declaration["properties"]["Mgmt/ProcessVersion"] = "s";
@@ -350,11 +350,11 @@ function addVictronInterfaces(
 
     declaration["properties"]["ProductId"] = {
       type: "i",
-      format: (/* v */) => product.toString(16),
+      format: (/* v */) => product['id'].toString(16),
     };
-    definition["ProductId"] = products[declaration["name"].split(".")[2]];
+    definition["ProductId"] = products[declaration["name"].split(".")[2]]['id'];
     declaration["properties"]["ProductName"] = "s";
-    definition["ProductName"] = `Virtual ${declaration["name"].split(".")[2]}`;
+    definition["ProductName"] = 'Virtual ' + (product.name ? product.name : declaration["name"].split(".")[2]);
   }
 
   if (add_defaults == true) {
