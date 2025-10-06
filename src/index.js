@@ -5,8 +5,8 @@ const packageJson = require(path.join(__dirname, "../", "package.json"));
 const products = {
   temperature: { id: 0xc060, name: 'temperature sensor' },
   meteo: { id: 0xc061 },
-  grid: { id: 0xc062, name: 'grid meter'},
-  tank: { id: 0xc063, name: 'tank sensor'},
+  grid: { id: 0xc062, name: 'grid meter' },
+  tank: { id: 0xc063, name: 'tank sensor' },
   heatpump: { id: 0xc064 },
   battery: { id: 0xc065 },
   pvinverter: { id: 0xc066, name: 'PV inverter' },
@@ -54,6 +54,16 @@ function wrapValue(t, v) {
       return ["i", v];
     case "d":
       return ["d", v];
+    case "as":
+      if (!Array.isArray(v)) {
+        throw new Error('value must be an array for type "as"');
+      }
+      for (const item of v) {
+        if (typeof item !== "string") {
+          throw new Error('all items in array must be strings for type "as"');
+        }
+      }
+      return ["as", v];
     default:
       return t.type ? wrapValue(t.type, v) : v;
   }
@@ -559,6 +569,7 @@ module.exports = {
   getMax,
   // we export private functions for unit-testing
   __private__: {
-    validateNewValue
+    validateNewValue,
+    wrapValue,
   }
 };
