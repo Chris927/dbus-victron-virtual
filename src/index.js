@@ -150,6 +150,16 @@ function validateNewValue(name, declaration, value) {
       case 'i':
       case 'd':
         return validateNewNumber(name, declaration, value);
+      case 'as':
+        if (!Array.isArray(value)) {
+          throw new Error(`value for ${name} must be an array`);
+        }
+        for (const item of value) {
+          if (typeof item !== "string") {
+            throw new Error(`all items in array for ${name} must be strings`);
+          }
+        }
+        return value;
       case 's':
       default:
         // we treat any other type as a string as well

@@ -30,6 +30,12 @@ describe("validateNewValue", () => {
     expect(validateNewValue("someName", { type: "i" }, true)).toEqual(1); // javascript semantics, what can I say...
     expect(validateNewValue("someName", { type: "i" }, [])).toEqual(0); // javascript semantics, what can I say...
     expect(validateNewValue("someName", { type: "d" }, 42.2)).toEqual(42.2);
+
+    // array of strings
+    expect(validateNewValue("someName", { type: "as" }, ["hello", "world"])).toEqual([
+      "hello",
+      "world",
+    ]);
   });
   it("throws in expected cases", () => {
     const cases = {
