@@ -511,6 +511,11 @@ function addVictronInterfaces(
         "S2 support enabled, but no __s2Handlers.Connect function provided in declaration",
       );
     }
+    if (!declaration.__s2Handlers.Disconnect || typeof declaration.__s2Handlers.Disconnect !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.Disconnect function provided in declaration",
+      );
+    }
 
     const s2Iface = {
       Connect: async function(cemId, keepAliveInterval) {
