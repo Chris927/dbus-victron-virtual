@@ -536,7 +536,7 @@ function addVictronInterfaces(
         //   );
         // }
         if (emitCallback) {
-          emitCallback(name, [args.cem_id, args.message]);
+          emitCallback(name, args);
         }
       },
     };
