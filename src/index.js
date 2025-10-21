@@ -516,11 +516,21 @@ function addVictronInterfaces(
         "S2 support enabled, but no __s2Handlers.Disconnect function provided in declaration",
       );
     }
+    if (!declaration.__s2Handlers.Message || typeof declaration.__s2Handlers.Message !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.Message function provided in declaration",
+      );
+    }
+    if (!declaration.__s2Handlers.KeepAlive || typeof declaration.__s2Handlers.KeepAlive !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.KeepAlive function provided in declaration",
+      );
+    }
 
     const s2Iface = {
       Connect: async function(cemId, keepAliveInterval) {
         console.log(
-          `S2 Connect called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}`,
+          `S2 "Connect" called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}`,
         );
         // TODO: error handling
         const rawResult = declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
@@ -530,7 +540,32 @@ function addVictronInterfaces(
         console.log(`S2 Connect handlerResult:`, handlerResult);
         return handlerResult;
       },
-      // Disconnect
+      Disconnect: async function(cemId) {
+        // TODO: when called without cemId via dbus-send, we don't fail, but get an object instead of a cemId. We should handle that case.
+        console.log(
+          `S2 "Disconnect" called with cemId: ${cemId}`,
+        );
+        declaration.__s2Handlers.Disconnect(cemId);
+        // no return value
+      },
+      Message: async function(cemId, message) {
+        console.log(
+          `S2 "Message" called with cemId: ${cemId}, message: ${message}`,
+        );
+        declaration.__s2Handlers.Message(cemId, message);
+        // no return value
+      },
+      KeepAlive: async function(cemId) {
+        console.log(
+          `S2 "KeepAlive" called with cemId: ${cemId}`,
+        );
+        const rawResult = declaration.__s2Handlers.KeepAlive(cemId);
+        const handlerResult = (rawResult instanceof Promise)
+          ? await rawResult
+          : rawResult;
+        console.log(`S2 KeepAlive handlerResult:`, handlerResult);
+        return handlerResult;
+      },
       emit: function(name, args) {
         console.log("S2 emit called, name:", name, "args:", args);
         // TODO: we want to validate, but probably not here? Issue is that both node-red-contrib-victron and
