@@ -501,18 +501,48 @@ function addVictronInterfaces(
 
   bus.exportInterface(iface, "/", ifaceDesc);
 
+  let emitS2Signal = undefined;
+
   if (declaration.__enableS2) {
     console.warn("S2 support is experimental");
-    bus.exportInterface(
-      {
-        Connect: function(cemId, keepAliveInterval) {
-          console.log(
-            `S2 Connect called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}`,
-          );
-          return true;
-        },
-        // Disconnect
+
+    if (!declaration.__s2Handlers || !declaration.__s2Handlers.Connect || typeof declaration.__s2Handlers.Connect !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.Connect function provided in declaration",
+      );
+    }
+
+    const s2Iface = {
+      Connect: async function(cemId, keepAliveInterval) {
+        console.log(
+          `S2 Connect called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}`,
+        );
+        // TODO: error handling
+        const rawResult = declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
+        const handlerResult = (rawResult instanceof Promise)
+          ? await rawResult
+          : rawResult;
+        console.log(`S2 Connect handlerResult:`, handlerResult);
+        return handlerResult;
       },
+      // Disconnect
+      emit: function(name, args) {
+        console.log("S2 emit called, name:", name, "args:", args);
+        // TODO: we want to validate, but probably not here? Issue is that both node-red-contrib-victron and
+        // dbus-victron-virtual now explicitly encode S2 specifics. Redesign later!
+        // if (!args.cem_id || !args.message) {
+        //   throw new Error(
+        //     "S2 emit called with invalid args, expected { cem_id: <string>, message: <string> }",
+        //   );
+        // }
+        if (emitCallback) {
+          emitCallback(name, [args.cem_id, args.message]);
+        }
+      },
+    };
+
+    bus.exportInterface(
+      s2Iface,
       "/Devices/0/S2",
       {
         name: "com.victronenergy.S2",
@@ -529,6 +559,21 @@ function addVictronInterfaces(
       }
     );
     delete declaration.__enableS2;
+
+    emitS2Signal = function(name, args) {
+
+      console.log("emitS2Signal called, name:", name, "args:", args);
+
+      const s2SignalNames = ['Message', 'Disconnect'];
+
+      if (!s2SignalNames.includes(name)) {
+        throw new Error(`Unsupported S2 signal name: ${name}, supported names: ${s2SignalNames.join(", ")}`);
+      }
+
+      s2Iface.emit(name, ...args);
+
+    }
+
   }
 
   // support GetValue, SetValue, GetMin, and GetMax for each property
@@ -584,6 +629,7 @@ function addVictronInterfaces(
 
   return {
     emitItemsChanged: () => iface.emit("ItemsChanged", getProperties()),
+    emitS2Signal,
     setValuesLocally,
     addSettings: (settings) => addSettings(bus, settings),
     removeSettings: (settings) => removeSettings(bus, settings),
