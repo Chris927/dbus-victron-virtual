@@ -342,7 +342,7 @@ function addVictronInterfaces(
     warnings.push("Interface name should start with com.victronenergy");
   }
 
-  debug(`addVictronInterfaces:`, declaration, definition, add_defaults);
+  console.log(`addVictronInterfaces:`, declaration, definition, add_defaults);
 
   function addDefaults() {
     debug("addDefaults, declaration.name:", declaration.name);
@@ -500,6 +500,36 @@ function addVictronInterfaces(
   };
 
   bus.exportInterface(iface, "/", ifaceDesc);
+
+  if (declaration.__enableS2) {
+    console.warn("S2 support is experimental");
+    bus.exportInterface(
+      {
+        Connect: function(cemId, keepAliveInterval) {
+          console.log(
+            `S2 Connect called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}`,
+          );
+          return true;
+        },
+        // Disconnect
+      },
+      "/Devices/0/S2",
+      {
+        name: "com.victronenergy.S2",
+        methods: {
+          Connect: ["si", "b", [], ["success"]],
+          Disconnect: ["s", "", [], []],
+          Message: ["ss", "", [], []],
+          KeepAlive: ["s", "b", [], ["success"]],
+        },
+        signals: {
+          Message: ["ss", "", [], []],
+          Disconnect: ["ss", "", [], []],
+        }
+      }
+    );
+    delete declaration.__enableS2;
+  }
 
   // support GetValue, SetValue, GetMin, and GetMax for each property
   for (const [k] of Object.entries(declaration.properties || {})) {
