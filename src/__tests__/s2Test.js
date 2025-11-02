@@ -91,6 +91,7 @@ describe("victron-dbus-virtual, s2 tests", () => {
       const bus = {
         exportInterface: jest.fn(),
       }
+      const emitCallback = jest.fn();
       const declaration = {
         name: "foo",
         __enableS2: true,
@@ -107,6 +108,7 @@ describe("victron-dbus-virtual, s2 tests", () => {
         declaration,
         definition,
         false,
+        emitCallback
       );
 
       const s2Interface = bus.exportInterface.mock.calls[1][0];
@@ -138,6 +140,9 @@ describe("victron-dbus-virtual, s2 tests", () => {
 
       // After keepAliveInterval + 30%, the connection should be considered lost
       expect(declaration.__s2state.connectedCemId).toBeNull();
+      expect(emitCallback.mock.calls.length).toBe(1); // we had an earlier disconnect
+      expect(emitCallback.mock.calls[0][0]).toBe('Disconnect');
+      expect(emitCallback.mock.calls[0][1]).toEqual(['cem1234', 'KeepAlive missed']);
 
       // connect again
       const returnValue_reconnect = s2Interface.Connect('cem1234', keepAliveInterval);
@@ -150,6 +155,13 @@ describe("victron-dbus-virtual, s2 tests", () => {
       // and advance time again
       jest.advanceTimersByTime((keepAliveInterval * 1.1) * 1000); // advance time
       expect(declaration.__s2state.connectedCemId).toBe('cem1234');
+
+      // in case of a keepalive from a different cemId, respond with a disconnect signal
+      s2Interface.KeepAlive('cem5678');
+      expect(declaration.__s2state.connectedCemId).toBe('cem1234');
+      expect(emitCallback.mock.calls.length).toBe(2);
+      expect(emitCallback.mock.calls[1][0]).toBe('Disconnect');
+      expect(emitCallback.mock.calls[1][1]).toEqual(['cem5678', 'Not connected']);
 
     });
 

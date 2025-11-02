@@ -535,11 +535,10 @@ function addVictronInterfaces(
       }
       state.keepAliveTimer = setTimeout(() => {
         console.warn('S2 KeepAlive timeout reached for CEM ID', state.connectedCemId, ', disconnecting.');
+        s2Iface.emit('Disconnect', [state.connectedCemId, 'KeepAlive missed']);
         state.connectedCemId = null;
         state.keepAliveTimeout = 0;
         state.lastSeen = 0;
-        // emit Disconnect signal
-        // s2Iface.emit('Disconnect', [state.connectedCemId, 'KeepAlive timeout']);
       }, state.keepAliveTimeout * 1.2 * 1000); // 20% grace period
     }
 
@@ -610,7 +609,7 @@ function addVictronInterfaces(
           console.warn(
             `S2 KeepAlive called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring.`,
           );
-          // TODO: we should send disconnect signal.
+          s2Iface.emit('Disconnect', [cemId, 'Not connected']);
           return false;
         }
         // update lastSeen and reset timer
