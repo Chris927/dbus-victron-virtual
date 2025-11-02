@@ -54,6 +54,16 @@ function wrapValue(t, v) {
       return ["i", v];
     case "d":
       return ["d", v];
+    case "ad":
+      if (!Array.isArray(v)) {
+        throw new Error('value must be an array for type "ad"');
+      }
+      for (const item of v) {
+        if (typeof item !== "number") {
+          throw new Error('all items in array must be numbers for type "ad"');
+        }
+      }
+      return ["ad", v];
     case "as":
       if (!Array.isArray(v)) {
         throw new Error('value must be an array for type "as"');
@@ -79,6 +89,8 @@ function unwrapValue([t, v]) {
       return Number(v[0]);
     case "d":
       return Number(v[0]);
+    case "ad":
+      return v[0]; // Return the array of doubles directly
     case "ai":
       if (v.length === 1 && v[0].length === 0) {
         return null;
