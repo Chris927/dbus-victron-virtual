@@ -536,19 +536,47 @@ function addVictronInterfaces(
           `S2 "Connect" called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}, s2state:`, declaration.__s2state
         );
 
+        if (typeof cemId !== 'string' || cemId.length === 0) {
+          throw new Error('Invalid cemId provided to S2 Connect');
+        }
+
+        if (typeof keepAliveInterval !== 'number' || keepAliveInterval <= 0) {
+          throw new Error('Invalid keepAliveInterval provided to S2 Connect');
+        }
+
         let returnValue = true;
         const state = declaration.__s2state;
+
+        function now() {
+          return new Date().getTime();
+        }
+
+        function addKeepAliveTimer() {
+          if (state.keepAliveTimer) {
+            clearTimeout(state.keepAliveTimer);
+          }
+          state.keepAliveTimer = setTimeout(() => {
+            console.warn('S2 KeepAlive timeout reached for CEM ID', state.connectedCemId, ', disconnecting.');
+            state.connectedCemId = null;
+            state.keepAliveTimeout = 0;
+            state.lastSeen = 0;
+            // emit Disconnect signal
+            // s2Iface.emit('Disconnect', [state.connectedCemId, 'KeepAlive timeout']);
+          }, state.keepAliveTimeout * 1.2 * 1000); // 20% grace period
+        }
 
         if (state.connectedCemId === null) {
           // first connection
           state.connectedCemId = cemId
           state.keepAliveTimeout = keepAliveInterval
-          state.lastSeen = new Date().getTime()
+          state.lastSeen = now()
+          addKeepAliveTimer();
           console.log('CEM ID', cemId, 'connected.')
         } else if (state.connectedCemId === cemId) {
           // it's a reconnect, appect
           state.keepAliveTimeout = keepAliveInterval
-          state.lastSeen = new Date().getTime()
+          state.lastSeen = now()
+          addKeepAliveTimer();
           console.log('CEM ID', cemId, 're-connected.')
         } else {
           console.warn('CEM ID', cemId, 'is trying to connect, but CEM ID', state.connectedCemId, 'is already connected. Rejecting.')
