@@ -529,6 +529,20 @@ function addVictronInterfaces(
       );
     }
 
+    function setKeepAliveTimer(state) {
+      if (state.keepAliveTimer) {
+        clearTimeout(state.keepAliveTimer);
+      }
+      state.keepAliveTimer = setTimeout(() => {
+        console.warn('S2 KeepAlive timeout reached for CEM ID', state.connectedCemId, ', disconnecting.');
+        state.connectedCemId = null;
+        state.keepAliveTimeout = 0;
+        state.lastSeen = 0;
+        // emit Disconnect signal
+        // s2Iface.emit('Disconnect', [state.connectedCemId, 'KeepAlive timeout']);
+      }, state.keepAliveTimeout * 1.2 * 1000); // 20% grace period
+    }
+
     const s2Iface = {
       Connect: function(cemId, keepAliveInterval) {
 
@@ -551,32 +565,18 @@ function addVictronInterfaces(
           return new Date().getTime();
         }
 
-        function addKeepAliveTimer() {
-          if (state.keepAliveTimer) {
-            clearTimeout(state.keepAliveTimer);
-          }
-          state.keepAliveTimer = setTimeout(() => {
-            console.warn('S2 KeepAlive timeout reached for CEM ID', state.connectedCemId, ', disconnecting.');
-            state.connectedCemId = null;
-            state.keepAliveTimeout = 0;
-            state.lastSeen = 0;
-            // emit Disconnect signal
-            // s2Iface.emit('Disconnect', [state.connectedCemId, 'KeepAlive timeout']);
-          }, state.keepAliveTimeout * 1.2 * 1000); // 20% grace period
-        }
-
         if (state.connectedCemId === null) {
           // first connection
           state.connectedCemId = cemId
           state.keepAliveTimeout = keepAliveInterval
           state.lastSeen = now()
-          addKeepAliveTimer();
+          setKeepAliveTimer(state);
           console.log('CEM ID', cemId, 'connected.')
         } else if (state.connectedCemId === cemId) {
           // it's a reconnect, appect
           state.keepAliveTimeout = keepAliveInterval
           state.lastSeen = now()
-          addKeepAliveTimer();
+          setKeepAliveTimer(state);
           console.log('CEM ID', cemId, 're-connected.')
         } else {
           console.warn('CEM ID', cemId, 'is trying to connect, but CEM ID', state.connectedCemId, 'is already connected. Rejecting.')
@@ -602,16 +602,22 @@ function addVictronInterfaces(
         declaration.__s2Handlers.Message(cemId, message);
         // no return value
       },
-      KeepAlive: async function(cemId) {
+      KeepAlive: function(cemId) {
         console.log(
           `S2 "KeepAlive" called with cemId: ${cemId}, s2state:`, declaration.__s2state
         );
-        const rawResult = declaration.__s2Handlers.KeepAlive(cemId);
-        const handlerResult = (rawResult instanceof Promise)
-          ? await rawResult
-          : rawResult;
-        console.log(`S2 KeepAlive handlerResult:`, handlerResult);
-        return handlerResult;
+        if (declaration.__s2state.connectedCemId !== cemId) {
+          console.warn(
+            `S2 KeepAlive called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring.`,
+          );
+          // TODO: we should send disconnect signal.
+          return false;
+        }
+        // update lastSeen and reset timer
+        declaration.__s2state.lastSeen = new Date().getTime();
+        setKeepAliveTimer(declaration.__s2state);
+        declaration.__s2Handlers.KeepAlive(cemId);
+        return true;
       },
       emit: function(name, args) {
         console.log("S2 emit called, name:", name, "args:", args);

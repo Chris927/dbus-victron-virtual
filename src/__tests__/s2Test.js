@@ -139,6 +139,17 @@ describe("victron-dbus-virtual, s2 tests", () => {
       // After keepAliveInterval + 30%, the connection should be considered lost
       expect(declaration.__s2state.connectedCemId).toBeNull();
 
+      // connect again
+      const returnValue_reconnect = s2Interface.Connect('cem1234', keepAliveInterval);
+      expect(returnValue_reconnect).toBe(true);
+      expect(declaration.__s2state.connectedCemId).toBe('cem1234');
+
+      jest.advanceTimersByTime((keepAliveInterval * 1.1) * 1000); // advance time
+      // ... then call keepalive
+      s2Interface.KeepAlive('cem1234');
+      // and advance time again
+      jest.advanceTimersByTime((keepAliveInterval * 1.1) * 1000); // advance time
+      expect(declaration.__s2state.connectedCemId).toBe('cem1234');
 
     });
 
