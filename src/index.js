@@ -530,7 +530,7 @@ function addVictronInterfaces(
     }
 
     const s2Iface = {
-      Connect: async function(cemId, keepAliveInterval) {
+      Connect: function(cemId, keepAliveInterval) {
 
         console.log(
           `S2 "Connect" called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}, s2state:`, declaration.__s2state
