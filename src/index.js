@@ -506,6 +506,8 @@ function addVictronInterfaces(
   if (declaration.__enableS2) {
     console.warn("S2 support is experimental");
 
+    declaration.__s2state = { connectedCemId: null, lastSeen: 0, keepAliveInterval: 0 };
+
     if (!declaration.__s2Handlers || !declaration.__s2Handlers.Connect || typeof declaration.__s2Handlers.Connect !== 'function') {
       throw new Error(
         "S2 support enabled, but no __s2Handlers.Connect function provided in declaration",
@@ -529,16 +531,33 @@ function addVictronInterfaces(
 
     const s2Iface = {
       Connect: async function(cemId, keepAliveInterval) {
+
         console.log(
-          `S2 "Connect" called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}`,
+          `S2 "Connect" called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}, s2state:`, declaration.__s2state
         );
-        // TODO: error handling
-        const rawResult = declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
-        const handlerResult = (rawResult instanceof Promise)
-          ? await rawResult
-          : rawResult;
-        console.log(`S2 Connect handlerResult:`, handlerResult);
-        return handlerResult;
+
+        let returnValue = true;
+        const state = declaration.__s2state;
+
+        if (state.connectedCemId === null) {
+          // first connection
+          state.connectedCemId = cemId
+          state.keepAliveTimeout = keepAliveInterval
+          state.lastSeen = new Date().getTime()
+          console.log('CEM ID', cemId, 'connected.')
+        } else if (state.connectedCemId === cemId) {
+          // it's a reconnect, appect
+          state.keepAliveTimeout = keepAliveInterval
+          state.lastSeen = new Date().getTime()
+          console.log('CEM ID', cemId, 're-connected.')
+        } else {
+          console.warn('CEM ID', cemId, 'is trying to connect, but CEM ID', state.connectedCemId, 'is already connected. Rejecting.')
+          returnValue = false;
+        }
+
+        // We call the handler provided, but ignore its return value. We handle the connection logic and state here.
+        declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
+        return returnValue;
       },
       Disconnect: async function(cemId) {
         // TODO: when called without cemId via dbus-send, we don't fail, but get an object instead of a cemId. We should handle that case.
@@ -557,7 +576,7 @@ function addVictronInterfaces(
       },
       KeepAlive: async function(cemId) {
         console.log(
-          `S2 "KeepAlive" called with cemId: ${cemId}`,
+          `S2 "KeepAlive" called with cemId: ${cemId}, s2state:`, declaration.__s2state
         );
         const rawResult = declaration.__s2Handlers.KeepAlive(cemId);
         const handlerResult = (rawResult instanceof Promise)
