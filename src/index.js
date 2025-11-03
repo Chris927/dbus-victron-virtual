@@ -669,7 +669,15 @@ function addVictronInterfaces(
         throw new Error(`Unsupported S2 signal name: ${name}, supported names: ${s2SignalNames.join(", ")}`);
       }
 
-      s2Iface.emit(name, ...args);
+      const { connectedCemId } = declaration.__s2state;
+      if (!connectedCemId) {
+        console.warn(
+          `emitS2Signal called for signal ${name}, but no CEM is connected, ignoring.`,
+        );
+        return;
+      }
+      const actualArgs = args.length > 1 ? args : [connectedCemId, args[0]];
+      s2Iface.emit(name, connectedCemId, ...actualArgs);
 
     }
 

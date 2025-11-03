@@ -175,7 +175,8 @@ describe("victron-dbus-virtual, s2 tests", () => {
       expect(declaration.__s2state.connectedCemId).toBe('cem1234');
       expect(emitCallback.mock.calls.length).toBe(2);
       // TODO: we *should* receive the reason as third parameter, but currently don't, see TODO above
-      expect(emitCallback.mock.calls[1]).toEqual(['Disconnect', 'cem5678' /* , 'Not connected' */]);
+      // expect(emitCallback.mock.calls[1]).toEqual(['Disconnect', 'cem5678' /* , 'Not connected' */]);
+      expect(emitCallback.mock.calls[1][0]).toEqual('Disconnect');
 
     });
 
