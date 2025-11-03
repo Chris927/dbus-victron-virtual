@@ -543,6 +543,12 @@ function addVictronInterfaces(
     }
 
     const s2Iface = {
+      Discover: function() {
+        console.log(
+          `S2 "Discover" called, s2state:`, declaration.__s2state
+        )
+        return true;
+      },
       Connect: function(cemId, keepAliveInterval) {
 
         console.log(
@@ -635,10 +641,11 @@ function addVictronInterfaces(
 
     bus.exportInterface(
       s2Iface,
-      "/Devices/0/S2",
+      "/S2/0/Rm",
       {
         name: "com.victronenergy.S2",
         methods: {
+          Discover: ["", "b", [], ["success"]],
           Connect: ["si", "b", [], ["success"]],
           Disconnect: ["s", "", [], []],
           Message: ["ss", "", [], []],
