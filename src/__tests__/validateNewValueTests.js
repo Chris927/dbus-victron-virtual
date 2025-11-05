@@ -36,6 +36,16 @@ describe("validateNewValue", () => {
       "hello",
       "world",
     ]);
+
+    // array of integers (nope, not supported currently)
+    // expect(validateNewValue("someName", { type: "ai" }, [1, 2, 3])).toEqual([1, 2, 3]);
+    // expect(validateNewValue("someName", { type: "ai" }, [1.2, 2.5, 3.9])).toEqual([1, 2, 3]);
+    // expect(validateNewValue("someName", { type: "ai" }, ["1", "2", "3"])).toEqual([1, 2, 3]);
+
+    // array of doubles
+    expect(validateNewValue("someName", { type: "ad" }, [1.1, 2.2, 3.3])).toEqual([1.1, 2.2, 3.3]);
+    expect(validateNewValue("someName", { type: "ad" }, [1, 2, 3])).toEqual([1, 2, 3]);
+    expect(validateNewValue("someName", { type: "ad" }, ["1.1", "2.2", "3.3"])).toEqual([1.1, 2.2, 3.3]);
   });
   it("throws in expected cases", () => {
     const cases = {

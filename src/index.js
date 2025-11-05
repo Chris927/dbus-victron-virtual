@@ -54,6 +54,16 @@ function wrapValue(t, v) {
       return ["i", v];
     case "d":
       return ["d", v];
+    case "ad":
+      if (!Array.isArray(v)) {
+        throw new Error('value must be an array for type "ad"');
+      }
+      for (const item of v) {
+        if (typeof item !== "number") {
+          throw new Error('all items in array must be numbers for type "ad"');
+        }
+      }
+      return ["ad", v];
     case "as":
       if (!Array.isArray(v)) {
         throw new Error('value must be an array for type "as"');
@@ -79,6 +89,8 @@ function unwrapValue([t, v]) {
       return Number(v[0]);
     case "d":
       return Number(v[0]);
+    case "ad":
+      return v[0]; // Return the array of doubles directly
     case "ai":
       if (v.length === 1 && v[0].length === 0) {
         return null;
@@ -93,13 +105,17 @@ function unwrapValue([t, v]) {
           // represents a null value
           return null;
         }
+        if (v.length === 1 && v[0].length === 5 && valueType === 'd') {
+          // represents an array of 5 doubles (used for light controls)
+          return v[0];
+        }
       } catch (e) {
         console.error(e);
         throw new Error(
           'Unable to unwrap array value: ' + e
         )
       }
-      throw new Error('array value, only empty i value supported, to represent null')
+      throw new Error(`array value, only empty i value supported, to represent null. ValueType: ${t[0].child[0].type}`)
     default:
       throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
   }
@@ -150,6 +166,13 @@ function validateNewValue(name, declaration, value) {
       case 'i':
       case 'd':
         return validateNewNumber(name, declaration, value);
+      case 'ad':
+        if (!Array.isArray(value)) {
+          throw new Error(`value for ${name} must be an array`);
+        }
+        return value.map((item) =>
+          validateNewNumber(name, { type: 'd', min: declaration.min, max: declaration.max }, item)
+        );
       case 'as':
         if (!Array.isArray(value)) {
           throw new Error(`value for ${name} must be an array`);
