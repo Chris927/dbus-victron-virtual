@@ -105,13 +105,17 @@ function unwrapValue([t, v]) {
           // represents a null value
           return null;
         }
+        if (v.length === 1 && v[0].length === 5 && valueType === 'd') {
+          // represents an array of 5 doubles (used for light controls)
+          return v[0];
+        }
       } catch (e) {
         console.error(e);
         throw new Error(
           'Unable to unwrap array value: ' + e
         )
       }
-      throw new Error('array value, only empty i value supported, to represent null')
+      throw new Error(`array value, only empty i value supported, to represent null. ValueType: ${t[0].child[0].type}`)
     default:
       throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
   }
@@ -162,6 +166,15 @@ function validateNewValue(name, declaration, value) {
       case 'i':
       case 'd':
         return validateNewNumber(name, declaration, value);
+      case 'ad':
+        if (!Array.isArray(value)) {
+          throw new Error(`value for ${name} must be an array`);
+        }
+        const result = [];
+        for (const item of value) {
+          result.push(validateNewNumber(name, { type: 'd', min: declaration.min, max: declaration.max }, item));
+        }
+        return result;
       case 'as':
         if (!Array.isArray(value)) {
           throw new Error(`value for ${name} must be an array`);
