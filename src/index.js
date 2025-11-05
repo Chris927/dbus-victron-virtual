@@ -365,7 +365,7 @@ function addVictronInterfaces(
     warnings.push("Interface name should start with com.victronenergy");
   }
 
-  debug(`addVictronInterfaces:`, declaration, definition, add_defaults);
+  console.log(`addVictronInterfaces:`, declaration, definition, add_defaults);
 
   function addDefaults() {
     debug("addDefaults, declaration.name:", declaration.name);
@@ -524,6 +524,204 @@ function addVictronInterfaces(
 
   bus.exportInterface(iface, "/", ifaceDesc);
 
+  let emitS2Signal = undefined;
+
+  if (declaration.__enableS2) {
+    console.warn("S2 support is experimental");
+
+    declaration.__s2state = { connectedCemId: null, lastSeen: 0, keepAliveInterval: 0 };
+
+    if (!declaration.__s2Handlers || !declaration.__s2Handlers.Connect || typeof declaration.__s2Handlers.Connect !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.Connect function provided in declaration",
+      );
+    }
+    if (!declaration.__s2Handlers.Disconnect || typeof declaration.__s2Handlers.Disconnect !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.Disconnect function provided in declaration",
+      );
+    }
+    if (!declaration.__s2Handlers.Message || typeof declaration.__s2Handlers.Message !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.Message function provided in declaration",
+      );
+    }
+    if (!declaration.__s2Handlers.KeepAlive || typeof declaration.__s2Handlers.KeepAlive !== 'function') {
+      throw new Error(
+        "S2 support enabled, but no __s2Handlers.KeepAlive function provided in declaration",
+      );
+    }
+
+    function setKeepAliveTimer(state) {
+      if (state.keepAliveTimer) {
+        clearTimeout(state.keepAliveTimer);
+      }
+      state.keepAliveTimer = setTimeout(() => {
+        console.warn('S2 KeepAlive timeout reached for CEM ID', state.connectedCemId, ', disconnecting.');
+        emitS2Signal('Disconnect', [state.connectedCemId, 'KeepAlive missed']);
+        state.connectedCemId = null;
+        state.keepAliveTimeout = 0;
+        state.lastSeen = 0;
+      }, state.keepAliveTimeout * 1.2 * 1000); // 20% grace period
+    }
+
+    const s2Iface = {
+      Discover: function() {
+        console.log(
+          `S2 "Discover" called, s2state:`, declaration.__s2state
+        )
+        return true;
+      },
+      Connect: function(cemId, keepAliveInterval) {
+
+        console.log(
+          `S2 "Connect" called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}, s2state:`, declaration.__s2state
+        );
+
+        if (typeof cemId !== 'string' || cemId.length === 0) {
+          throw new Error('Invalid cemId provided to S2 Connect');
+        }
+
+        if (typeof keepAliveInterval !== 'number' || keepAliveInterval <= 0) {
+          throw new Error('Invalid keepAliveInterval provided to S2 Connect');
+        }
+
+        let returnValue = true;
+        const state = declaration.__s2state;
+
+        function now() {
+          return new Date().getTime();
+        }
+
+        if (state.connectedCemId === null) {
+          // first connection
+          state.connectedCemId = cemId
+          state.keepAliveTimeout = keepAliveInterval
+          state.lastSeen = now()
+          setKeepAliveTimer(state);
+          console.log('CEM ID', cemId, 'connected.')
+          declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
+        } else if (state.connectedCemId === cemId) {
+          // it's a reconnect, accept
+          state.keepAliveTimeout = keepAliveInterval
+          state.lastSeen = now()
+          setKeepAliveTimer(state);
+          console.log('CEM ID', cemId, 're-connected.')
+        } else {
+          console.warn('CEM ID', cemId, 'is trying to connect, but CEM ID', state.connectedCemId, 'is already connected. Rejecting.')
+          returnValue = false;
+        }
+
+        return returnValue;
+      },
+      Disconnect: async function(cemId) {
+        // TODO: when called without cemId via dbus-send, we don't fail, but get an object instead of a cemId. We should handle that case.
+        // if we are not connected, ignore. If we are connected with a different cemId, ignore. If we are connected with the same cemId, disconnect, i.e. reset internal state, and call __s2Handlers.Disconnect.
+        const state = declaration.__s2state;
+        if (state.connectedCemId === cemId) {
+          console.log(`S2 Disconnect called with matching cemId ${cemId}, disconnecting.`);
+          state.connectedCemId = null;
+          state.lastSeen = 0;
+          state.keepAliveTimeout = 0;
+          clearInterval(state.keepAliveTimer);
+          declaration.__s2Handlers.Disconnect(cemId);
+        } else {
+          console.warn(
+            `S2 Disconnect called with cemId ${cemId}, but connectedCemId is ${state.connectedCemId}, ignoring.`,
+          );
+        }
+      },
+      Message: async function(cemId, message) {
+        console.log(
+          `S2 "Message" called with cemId: ${cemId}, message: ${message}`,
+        );
+        // only forward to the flow, if cemID matches connectedCemId
+        // If cemID does not match, reply with a Disconnect signal.
+        if (declaration.__s2state.connectedCemId === cemId) {
+          declaration.__s2Handlers.Message(cemId, message);
+        } else {
+          console.warn(
+            `S2 Message called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring and sending Disconnect signal back.`,
+          );
+          emitS2Signal('Disconnect', [cemId, 'Not connected']);
+        }
+      },
+      KeepAlive: function(cemId) {
+        console.log(
+          `S2 "KeepAlive" called with cemId: ${cemId}, s2state:`, declaration.__s2state
+        );
+        if (declaration.__s2state.connectedCemId !== cemId) {
+          console.warn(
+            `S2 KeepAlive called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring.`,
+          );
+          emitS2Signal('Disconnect', [cemId, 'Not connected']);
+          return false;
+        }
+        // update lastSeen and reset timer
+        declaration.__s2state.lastSeen = new Date().getTime();
+        setKeepAliveTimer(declaration.__s2state);
+        declaration.__s2Handlers.KeepAlive(cemId);
+        return true;
+      },
+      emit: function(name, args) {
+        console.log("S2 emit called, name:", name, "args:", args);
+        // TODO: we want to validate, but probably not here? Issue is that both node-red-contrib-victron and
+        // dbus-victron-virtual now explicitly encode S2 specifics. Redesign later!
+        // if (!args.cem_id || !args.message) {
+        //   throw new Error(
+        //     "S2 emit called with invalid args, expected { cem_id: <string>, message: <string> }",
+        //   );
+        // }
+        if (emitCallback) {
+          emitCallback(name, args);
+        }
+      },
+    };
+
+    bus.exportInterface(
+      s2Iface,
+      "/S2/0/Rm",
+      {
+        name: "com.victronenergy.S2",
+        methods: {
+          Discover: ["", "b", [], ["success"]],
+          Connect: ["si", "b", [], ["success"]],
+          Disconnect: ["s", "", [], []],
+          Message: ["ss", "", [], []],
+          KeepAlive: ["s", "b", [], ["success"]],
+        },
+        signals: {
+          Message: ["ss", "", [], []],
+          Disconnect: ["ss", "", [], []],
+        }
+      }
+    );
+    delete declaration.__enableS2;
+
+    emitS2Signal = function(name, args) {
+
+      console.log("emitS2Signal called, name:", name, "args:", args);
+
+      const s2SignalNames = ['Message', 'Disconnect'];
+
+      if (!s2SignalNames.includes(name)) {
+        throw new Error(`Unsupported S2 signal name: ${name}, supported names: ${s2SignalNames.join(", ")}`);
+      }
+
+      const { connectedCemId } = declaration.__s2state;
+      if (!connectedCemId) {
+        console.warn(
+          `emitS2Signal called for signal ${name}, but no CEM is connected, ignoring.`,
+        );
+        return;
+      }
+      const actualArgs = args.length > 1 ? args : [connectedCemId, args[0]];
+      s2Iface.emit(name, ...actualArgs);
+
+    }
+
+  }
+
   // support GetValue, SetValue, GetMin, and GetMax for each property
   for (const [k] of Object.entries(declaration.properties || {})) {
     bus.exportInterface(
@@ -577,6 +775,7 @@ function addVictronInterfaces(
 
   return {
     emitItemsChanged: () => iface.emit("ItemsChanged", getProperties()),
+    emitS2Signal,
     setValuesLocally,
     addSettings: (settings) => addSettings(bus, settings),
     removeSettings: (settings) => removeSettings(bus, settings),
@@ -604,5 +803,6 @@ module.exports = {
   __private__: {
     validateNewValue,
     wrapValue,
+    getType
   }
 };
