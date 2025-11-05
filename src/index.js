@@ -170,11 +170,9 @@ function validateNewValue(name, declaration, value) {
         if (!Array.isArray(value)) {
           throw new Error(`value for ${name} must be an array`);
         }
-        const result = [];
-        for (const item of value) {
-          result.push(validateNewNumber(name, { type: 'd', min: declaration.min, max: declaration.max }, item));
-        }
-        return result;
+        return value.map((item) =>
+          validateNewNumber(name, { type: 'd', min: declaration.min, max: declaration.max }, item)
+        );
       case 'as':
         if (!Array.isArray(value)) {
           throw new Error(`value for ${name} must be an array`);
