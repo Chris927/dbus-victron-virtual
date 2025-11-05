@@ -803,5 +803,6 @@ module.exports = {
   __private__: {
     validateNewValue,
     wrapValue,
+    getType
   }
 };

@@ -104,13 +104,15 @@ describe("victron-dbus-virtual, s2 tests", () => {
         exportInterface: jest.fn(noopBus.exportInterface),
       }
       const emitCallback = jest.fn();
+      const disconnectHandler = jest.fn();
+      const messageHandler = jest.fn();
       const declaration = {
         name: "foo",
         __enableS2: true,
         __s2Handlers: {
           Connect: () => { },
-          Disconnect: () => { },
-          Message: () => { },
+          Disconnect: disconnectHandler,
+          Message: messageHandler,
           KeepAlive: () => { },
         }
       };
@@ -177,6 +179,19 @@ describe("victron-dbus-virtual, s2 tests", () => {
       // TODO: we *should* receive the reason as third parameter, but currently don't, see TODO above
       // expect(emitCallback.mock.calls[1]).toEqual(['Disconnect', 'cem5678' /* , 'Not connected' */]);
       expect(emitCallback.mock.calls[1][0]).toEqual('Disconnect');
+
+      // we can send messages when connected
+      s2Interface.Message('cem1234', 'hello');
+      expect(emitCallback.mock.calls.length).toBe(2);
+      expect(messageHandler.mock.calls.length).toBe(1);
+      expect(messageHandler.mock.calls[0]).toEqual(['cem1234', 'hello']);
+
+      // disconnect
+      s2Interface.Disconnect('cem1234');
+      expect(declaration.__s2state.connectedCemId).toBeNull();
+      expect(emitCallback.mock.calls.length).toBe(2);
+      expect(disconnectHandler.mock.calls.length).toBe(1);
+      expect(disconnectHandler.mock.calls[0]).toEqual(['cem1234']);
 
     });
 
