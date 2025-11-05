@@ -577,8 +577,9 @@ function addVictronInterfaces(
           state.lastSeen = now()
           setKeepAliveTimer(state);
           console.log('CEM ID', cemId, 'connected.')
+          declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
         } else if (state.connectedCemId === cemId) {
-          // it's a reconnect, appect
+          // it's a reconnect, accept
           state.keepAliveTimeout = keepAliveInterval
           state.lastSeen = now()
           setKeepAliveTimer(state);
@@ -588,24 +589,39 @@ function addVictronInterfaces(
           returnValue = false;
         }
 
-        // We call the handler provided, but ignore its return value. We handle the connection logic and state here.
-        declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
         return returnValue;
       },
       Disconnect: async function(cemId) {
         // TODO: when called without cemId via dbus-send, we don't fail, but get an object instead of a cemId. We should handle that case.
-        console.log(
-          `S2 "Disconnect" called with cemId: ${cemId}`,
-        );
-        declaration.__s2Handlers.Disconnect(cemId);
-        // no return value
+        // if we are not connected, ignore. If we are connected with a different cemId, ignore. If we are connected with the same cemId, disconnect, i.e. reset internal state, and call __s2Handlers.Disconnect.
+        const state = declaration.__s2state;
+        if (state.connectedCemId === cemId) {
+          console.log(`S2 Disconnect called with matching cemId ${cemId}, disconnecting.`);
+          state.connectedCemId = null;
+          state.lastSeen = 0;
+          state.keepAliveTimeout = 0;
+          clearInterval(state.keepAliveTimer);
+          declaration.__s2Handlers.Disconnect(cemId);
+        } else {
+          console.warn(
+            `S2 Disconnect called with cemId ${cemId}, but connectedCemId is ${state.connectedCemId}, ignoring.`,
+          );
+        }
       },
       Message: async function(cemId, message) {
         console.log(
           `S2 "Message" called with cemId: ${cemId}, message: ${message}`,
         );
-        declaration.__s2Handlers.Message(cemId, message);
-        // no return value
+        // only forward to the flow, if cemID matches connectedCemId
+        // If cemID does not match, reply with a Disconnect signal.
+        if (declaration.__s2state.connectedCemId === cemId) {
+          declaration.__s2Handlers.Message(cemId, message);
+        } else {
+          console.warn(
+            `S2 Message called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring and sending Disconnect signal back.`,
+          );
+          emitS2Signal('Disconnect', [cemId, 'Not connected']);
+        }
       },
       KeepAlive: function(cemId) {
         console.log(
@@ -677,7 +693,7 @@ function addVictronInterfaces(
         return;
       }
       const actualArgs = args.length > 1 ? args : [connectedCemId, args[0]];
-      s2Iface.emit(name, connectedCemId, ...actualArgs);
+      s2Iface.emit(name, ...actualArgs);
 
     }
 
