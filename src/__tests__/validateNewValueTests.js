@@ -37,10 +37,10 @@ describe("validateNewValue", () => {
       "world",
     ]);
 
-    // array of integers (nope, not supported currently)
-    // expect(validateNewValue("someName", { type: "ai" }, [1, 2, 3])).toEqual([1, 2, 3]);
-    // expect(validateNewValue("someName", { type: "ai" }, [1.2, 2.5, 3.9])).toEqual([1, 2, 3]);
-    // expect(validateNewValue("someName", { type: "ai" }, ["1", "2", "3"])).toEqual([1, 2, 3]);
+    // array of integers
+    expect(validateNewValue("someName", { type: "ai" }, [1, 2, 3])).toEqual([1, 2, 3]);
+    expect(validateNewValue("someName", { type: "ai" }, [1.2, 2.5, 3.9])).toEqual([1, 2, 3]);
+    expect(validateNewValue("someName", { type: "ai" }, ["1", "2", "3"])).toEqual([1, 2, 3]);
 
     // array of doubles
     expect(validateNewValue("someName", { type: "ad" }, [1.1, 2.2, 3.3])).toEqual([1.1, 2.2, 3.3]);
@@ -62,6 +62,9 @@ describe("validateNewValue", () => {
       // min and max
       k: () => validateNewValue("someName", { type: "i", min: 0 }, -1),
       l: () => validateNewValue("someName", { type: "i", max: 1 }, 2),
+      // integer arrays with constraints
+      m: () => validateNewValue("someName", { type: "ai", min: 0, max: 360 }, [100, 380]),
+      n: () => validateNewValue("someName", { type: "ai", min: 0 }, [-10, 50]),
     };
 
     for (const key in cases) {

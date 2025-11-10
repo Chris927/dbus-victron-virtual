@@ -64,6 +64,16 @@ function wrapValue(t, v) {
         }
       }
       return ["ad", v];
+    case "ai":
+      if (!Array.isArray(v)) {
+        throw new Error('value must be an array for type "ai"');
+      }
+      for (const item of v) {
+        if (!Number.isInteger(item)) {
+          throw new Error('all items in array must be integers for type "ai"');
+        }
+      }
+      return ["ai", v];
     case "as":
       if (!Array.isArray(v)) {
         throw new Error('value must be an array for type "as"');
@@ -95,9 +105,7 @@ function unwrapValue([t, v]) {
       if (v.length === 1 && v[0].length === 0) {
         return null;
       }
-      throw new Error(
-        'Unsupported value type "ai", only supported as empty array',
-      );
+      return v[0]; // Return the array of integers directly
     case "a":
       try {
         const valueType = t[0].child[0].type;
@@ -172,6 +180,13 @@ function validateNewValue(name, declaration, value) {
         }
         return value.map((item) =>
           validateNewNumber(name, { type: 'd', min: declaration.min, max: declaration.max }, item)
+        );
+      case 'ai':
+        if (!Array.isArray(value)) {
+          throw new Error(`value for ${name} must be an array`);
+        }
+        return value.map((item) =>
+          validateNewNumber(name, { type: 'i', min: declaration.min, max: declaration.max }, item)
         );
       case 'as':
         if (!Array.isArray(value)) {

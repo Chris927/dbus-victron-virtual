@@ -13,6 +13,13 @@ describe("victron-dbus-virtual, wrapValue", () => {
     expect(() => wrapValue("ad", 3)).toThrow('value must be an array for type "ad"');
     expect(() => wrapValue("ad", [42, "42"])).toThrow('all items in array must be numbers for type "ad"');
   });
+  it("works for integer arrays", () => {
+    expect(wrapValue("ai", [1, 2, 3])).toStrictEqual(["ai", [1, 2, 3]]);
+    expect(wrapValue("ai", [0, 360, 100])).toStrictEqual(["ai", [0, 360, 100]]);
+    expect(() => wrapValue("ai", 42)).toThrow('value must be an array for type "ai"');
+    expect(() => wrapValue("ai", [1, 2.5, 3])).toThrow('all items in array must be integers for type "ai"');
+    expect(() => wrapValue("ai", [1, "2", 3])).toThrow('all items in array must be integers for type "ai"');
+  });
   it("works for string arrays", () => {
     expect(wrapValue("as", ["hello", "world"])).toStrictEqual(["as", ["hello", "world"]]);
     expect(() => wrapValue("as", "hello")).toThrow('value must be an array for type "as"');
