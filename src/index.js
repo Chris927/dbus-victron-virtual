@@ -630,7 +630,7 @@ function addVictronInterfaces(
 
         return returnValue;
       },
-      Disconnect: async function(cemId) {
+      Disconnect: function(cemId) {
         // TODO: when called without cemId via dbus-send, we don't fail, but get an object instead of a cemId. We should handle that case.
         // if we are not connected, ignore. If we are connected with a different cemId, ignore. If we are connected with the same cemId, disconnect, i.e. reset internal state, and call __s2Handlers.Disconnect.
         const state = declaration.__s2state;
@@ -647,7 +647,7 @@ function addVictronInterfaces(
           );
         }
       },
-      Message: async function(cemId, message) {
+      Message: function(cemId, message) {
         debugS2(
           `S2 "Message" called with cemId: ${cemId}, message: ${message}`,
         );
