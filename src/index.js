@@ -1,4 +1,5 @@
 const debug = require("debug")("dbus-victron-virtual");
+const debugS2 = require("debug")("dbus-victron-virtual:s2");
 const path = require("path");
 const packageJson = require(path.join(__dirname, "../", "package.json"));
 
@@ -582,14 +583,14 @@ function addVictronInterfaces(
 
     const s2Iface = {
       Discover: function() {
-        console.log(
+        debugS2(
           `S2 "Discover" called, s2state:`, declaration.__s2state
         )
         return true;
       },
       Connect: function(cemId, keepAliveInterval) {
 
-        console.log(
+        debugS2(
           `S2 "Connect" called with cemId: ${cemId}, keepAliveInterval: ${keepAliveInterval}, s2state:`, declaration.__s2state
         );
 
@@ -614,14 +615,14 @@ function addVictronInterfaces(
           state.keepAliveTimeout = keepAliveInterval
           state.lastSeen = now()
           setKeepAliveTimer(state);
-          console.log('CEM ID', cemId, 'connected.')
+          debugS2('CEM ID', cemId, 'connected.')
           declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
         } else if (state.connectedCemId === cemId) {
           // it's a reconnect, accept
           state.keepAliveTimeout = keepAliveInterval
           state.lastSeen = now()
           setKeepAliveTimer(state);
-          console.log('CEM ID', cemId, 're-connected.')
+          debugS2('CEM ID', cemId, 're-connected.')
         } else {
           console.warn('CEM ID', cemId, 'is trying to connect, but CEM ID', state.connectedCemId, 'is already connected. Rejecting.')
           returnValue = false;
@@ -634,7 +635,7 @@ function addVictronInterfaces(
         // if we are not connected, ignore. If we are connected with a different cemId, ignore. If we are connected with the same cemId, disconnect, i.e. reset internal state, and call __s2Handlers.Disconnect.
         const state = declaration.__s2state;
         if (state.connectedCemId === cemId) {
-          console.log(`S2 Disconnect called with matching cemId ${cemId}, disconnecting.`);
+          debugS2(`S2 Disconnect called with matching cemId ${cemId}, disconnecting.`);
           state.connectedCemId = null;
           state.lastSeen = 0;
           state.keepAliveTimeout = 0;
@@ -647,7 +648,7 @@ function addVictronInterfaces(
         }
       },
       Message: async function(cemId, message) {
-        console.log(
+        debugS2(
           `S2 "Message" called with cemId: ${cemId}, message: ${message}`,
         );
         // only forward to the flow, if cemID matches connectedCemId
@@ -662,7 +663,7 @@ function addVictronInterfaces(
         }
       },
       KeepAlive: function(cemId) {
-        console.log(
+        debugS2(
           `S2 "KeepAlive" called with cemId: ${cemId}, s2state:`, declaration.__s2state
         );
         if (declaration.__s2state.connectedCemId !== cemId) {
@@ -679,14 +680,7 @@ function addVictronInterfaces(
         return true;
       },
       emit: function(name, args) {
-        console.log("S2 emit called, name:", name, "args:", args);
-        // TODO: we want to validate, but probably not here? Issue is that both node-red-contrib-victron and
-        // dbus-victron-virtual now explicitly encode S2 specifics. Redesign later!
-        // if (!args.cem_id || !args.message) {
-        //   throw new Error(
-        //     "S2 emit called with invalid args, expected { cem_id: <string>, message: <string> }",
-        //   );
-        // }
+        debugS2("S2 emit called, name:", name, "args:", args);
         if (emitCallback) {
           emitCallback(name, args);
         }
@@ -715,7 +709,7 @@ function addVictronInterfaces(
 
     emitS2Signal = function(name, args) {
 
-      console.log("emitS2Signal called, name:", name, "args:", args);
+      debugS2("emitS2Signal called, name:", name, "args:", args);
 
       const s2SignalNames = ['Message', 'Disconnect'];
 
