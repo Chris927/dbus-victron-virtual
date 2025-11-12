@@ -109,22 +109,28 @@ function unwrapValue([t, v]) {
       return v[0]; // Return the array of integers directly
     case "a":
       try {
+        if (!t[0].child || !t[0].child[0] || !t[0].child[0].type) {
+          throw new Error('Array type information missing');
+        }
+
         const valueType = t[0].child[0].type;
-        if (v.length === 1 && v[0].length === 0 && valueType === 'i') {
-          // represents a null value
+        const arrayLength = (v.length === 1 && v[0]) ? v[0].length : 0;
+
+        if (v.length === 1 && arrayLength === 0 && valueType === 'i') {
           return null;
         }
-        if (v.length === 1 && v[0].length === 5 && valueType === 'd') {
-          // represents an array of 5 doubles (used for light controls)
+
+        if (v.length === 1 && arrayLength > 0 && (valueType === 'i' || valueType === 'd')) {
           return v[0];
         }
+
+        throw new Error(`Unsupported array type. ValueType: ${valueType}, length: ${arrayLength}`);
       } catch (e) {
         console.error(e);
         throw new Error(
           'Unable to unwrap array value: ' + e
         )
       }
-      throw new Error(`array value, only empty i value supported, to represent null. ValueType: ${t[0].child[0].type}`)
     default:
       throw new Error(`Unsupported value type: ${JSON.stringify(t)}`);
   }
@@ -174,6 +180,9 @@ function validateNewValue(name, declaration, value) {
         throw new Error(`validation failed for ${name}, type ${declaration.type}, check logs for details.`)
       case 'i':
       case 'd':
+        if (Array.isArray(value) && value.length > 0) {
+          throw new Error(`value for ${name} cannot be an array`);
+        }
         return validateNewNumber(name, declaration, value);
       case 'ad':
         if (!Array.isArray(value)) {
@@ -200,8 +209,11 @@ function validateNewValue(name, declaration, value) {
         }
         return value;
       case 's':
+        if (Array.isArray(value) && value.length > 0) {
+          throw new Error(`value for ${name} cannot be an array`);
+        }
+        return '' + value;
       default:
-        // we treat any other type as a string as well
         return '' + value;
     }
   } catch (e) {
