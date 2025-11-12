@@ -16,7 +16,7 @@ const products = {
   'switch': { id: 0xc069 },
   acload: { id: 0xc06a, name: 'AC load' },
   genset: { id: 0xc06b },
-  motordrive: { id: 0xc06c },
+  'e-drive': { id: 0xc06c },
   dcgenset: { id: 0xc06d, name: 'DC genset' }
 };
 
@@ -381,7 +381,7 @@ function addVictronInterfaces(
     warnings.push("Interface name should start with com.victronenergy");
   }
 
-  console.log(`addVictronInterfaces:`, declaration, definition, add_defaults);
+  debug(`addVictronInterfaces:`, declaration, definition, add_defaults);
 
   function addDefaults() {
     debug("addDefaults, declaration.name:", declaration.name);
