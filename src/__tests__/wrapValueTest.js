@@ -23,6 +23,7 @@ describe("victron-dbus-virtual, wrapValue", () => {
   it("works for string arrays", () => {
     expect(wrapValue("as", ["hello", "world"])).toStrictEqual(["as", ["hello", "world"]]);
     expect(() => wrapValue("as", "hello")).toThrow('value must be an array for type "as"');
+    expect(() => wrapValue("as", ["hello", 42])).toThrow('all items in array must be strings for type "as"');
   });
 });
 

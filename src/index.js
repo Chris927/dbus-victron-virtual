@@ -107,6 +107,13 @@ function unwrapValue([t, v]) {
         return null;
       }
       return v[0]; // Return the array of integers directly
+    case "as":
+      for (const item of v[0]) {
+        if (typeof item !== "string") {
+          throw new Error('All items in string array must be strings');
+        }
+      }
+      return v[0];
     case "a":
       try {
         if (!t[0].child || !t[0].child[0] || !t[0].child[0].type) {
@@ -824,6 +831,7 @@ module.exports = {
   __private__: {
     validateNewValue,
     wrapValue,
+    unwrapValue,
     getType
   }
 };

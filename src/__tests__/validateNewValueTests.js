@@ -59,12 +59,18 @@ describe("validateNewValue", () => {
       // Invalid double
       i: () => validateNewValue("someName", { type: "d" }, "some text"),
       j: () => validateNewValue("someName", { type: "d" }, Number.NaN),
+      j2: () => validateNewValue("someName", { type: "d" }, [12.3]),
       // min and max
       k: () => validateNewValue("someName", { type: "i", min: 0 }, -1),
       l: () => validateNewValue("someName", { type: "i", max: 1 }, 2),
       // integer arrays with constraints
       m: () => validateNewValue("someName", { type: "ai", min: 0, max: 360 }, [100, 380]),
       n: () => validateNewValue("someName", { type: "ai", min: 0 }, [-10, 50]),
+      // arrays
+      arr1: () => validateNewValue("someName", { type: "ad" }, "bla"),
+      arr2: () => validateNewValue("someName", { type: "as" }, 42),
+      arr3: () => validateNewValue("someName", { type: "ai" }, 42),
+      arr4: () => validateNewValue("someName", { type: "as" }, ["bla", 42]),
     };
 
     for (const key in cases) {
