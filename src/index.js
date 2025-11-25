@@ -16,7 +16,7 @@ const products = {
   'switch': { id: 0xc069 },
   acload: { id: 0xc06a, name: 'AC load' },
   genset: { id: 0xc06b },
-  'e-drive': { id: 0xc06c },
+  motordrive: { id: 0xc06c, name: 'E-drive' },
   dcgenset: { id: 0xc06d, name: 'DC genset' }
 };
 
