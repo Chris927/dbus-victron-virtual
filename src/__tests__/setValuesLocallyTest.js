@@ -76,5 +76,34 @@ describe("victron-dbus-virtual, setValuesLocally", () => {
     }).toThrow("value for IntProp is not a number");
 
   });
+
+  it("silently skips readonly properties", () => {
+    const declaration = { name: "foo", properties: { ReadOnlyProp: { type: "s", readonly: true }, WritableProp: "s" } };
+    const definition = { ReadOnlyProp: "original", WritableProp: "original" };
+    const bus = { exportInterface: jest.fn() };
+    const cb = jest.fn();
+
+    const { setValuesLocally } = addVictronInterfaces(bus, declaration, definition, false, cb);
+
+    setValuesLocally({ ReadOnlyProp: "changed", WritableProp: "changed" });
+
+    expect(definition.ReadOnlyProp).toBe("original");
+    expect(definition.WritableProp).toBe("changed");
+  });
+})
+
+describe("victron-dbus-virtual, SetValues", () => {
+  it("returns -1 and does not update when SetValues includes a readonly property", () => {
+    const declaration = { name: "foo", properties: { ReadOnlyProp: { type: "s", readonly: true }, WritableProp: "s" } };
+    const definition = { ReadOnlyProp: "original", WritableProp: "original" };
+    const bus = { exportInterface: jest.fn() };
+
+    addVictronInterfaces(bus, declaration, definition, false);
+
+    const iface = bus.exportInterface.mock.calls[0][0];
+    const result = iface.SetValues([["ReadOnlyProp", [{ type: "s" }, ["changed"]]]]);
+    expect(result).toBe(-1);
+    expect(definition.ReadOnlyProp).toBe("original");
+  });
 })
 

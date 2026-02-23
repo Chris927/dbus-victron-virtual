@@ -419,19 +419,20 @@ function addVictronInterfaces(
       );
       return;
     }
-    declaration["properties"]["Mgmt/Connection"] = "s";
+    declaration["properties"]["Mgmt/Connection"] = { type: "s", readonly: true };
     definition["Mgmt/Connection"] = "Node-RED";
-    declaration["properties"]["Mgmt/ProcessName"] = "s";
+    declaration["properties"]["Mgmt/ProcessName"] = { type: "s", readonly: true };
     definition["Mgmt/ProcessName"] = packageJson.name;
-    declaration["properties"]["Mgmt/ProcessVersion"] = "s";
+    declaration["properties"]["Mgmt/ProcessVersion"] = { type: "s", readonly: true };
     definition["Mgmt/ProcessVersion"] = packageJson.version;
 
     declaration["properties"]["ProductId"] = {
       type: "i",
       format: (/* v */) => product['id'].toString(16),
+      readonly: true
     };
     definition["ProductId"] = products[declaration["name"].split(".")[2]]['id'];
-    declaration["properties"]["ProductName"] = "s";
+    declaration["properties"]["ProductName"] = { type: "s", readonly: true };
     definition["ProductName"] = 'Virtual ' + (product.name ? product.name : declaration["name"].split(".")[2]);
   }
 
@@ -506,8 +507,12 @@ function addVictronInterfaces(
         if (!declaration.properties || !declaration.properties[k]) {
           throw new Error(`Property ${k} not found in properties.`);
         }
+        if ((declaration.properties[k] || {}).readonly) {
+          return -1;
+        }
         definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
       }
+
       debug(`SetValues updated definition:`, definition);
       // TODO: we must include changed values only.
       iface.emit("ItemsChanged", getProperties(Object.keys(values), true));
@@ -538,6 +543,9 @@ function addVictronInterfaces(
     for (const k of Object.keys(sanitizedValues)) {
       if (!declaration.properties || !declaration.properties[k]) {
         throw new Error(`Property ${k} not found in properties.`);
+      }
+      if ((declaration.properties[k] || {}).readonly) {
+        continue;
       }
       definition[k] = validateNewValue(k, declaration.properties[k], sanitizedValues[k]);
     }
@@ -765,6 +773,9 @@ function addVictronInterfaces(
           return format(definition[k]);
         },
         SetValue: function(value /* msg */) {
+          if ((declaration.properties[k] || {}).readonly) {
+            return -1;
+          }
           try {
             definition[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
             iface.emit("ItemsChanged", getProperties([k], true));
