@@ -104,4 +104,16 @@ describe("GetValue and SetValue called on us", () => {
     ]);
 
   });
+
+  it("returns -1 and does not update when SetValue is called on a readonly property", () => {
+    const declaration = { name: "foo", properties: { ReadOnlyProp: { type: "s", readonly: true } } };
+    const definition = { ReadOnlyProp: "original" };
+    const bus = { exportInterface: jest.fn() };
+
+    addVictronInterfaces(bus, declaration, definition, false);
+
+    const result = bus.exportInterface.mock.calls[1][0].SetValue([[{ type: "s" }], ["changed"]]);
+    expect(result).toBe(-1);
+    expect(definition.ReadOnlyProp).toBe("original");
+  });
 });

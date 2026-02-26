@@ -76,5 +76,80 @@ describe("victron-dbus-virtual, setValuesLocally", () => {
     }).toThrow("value for IntProp is not a number");
 
   });
+
+  it("trying to set readonly properties fails, without changing anything", () => {
+    const declaration = { name: "foo", properties: { ReadOnlyProp: { type: "s", readonly: true }, WritableProp: "s" } };
+    const definition = { ReadOnlyProp: "original", WritableProp: "original" };
+    const bus = { exportInterface: jest.fn() };
+    const cb = jest.fn();
+
+    const { setValuesLocally } = addVictronInterfaces(bus, declaration, definition, false, cb);
+
+    try {
+      setValuesLocally({ ReadOnlyProp: "changed", WritableProp: "changed" });
+      expect(true).toBe(false); // should not reach this line
+    } catch (e) {
+      expect(e.message.match("ReadOnlyProp is readonly")).toBeTruthy();
+    }
+
+    expect(definition.ReadOnlyProp).toBe("original");
+    expect(definition.WritableProp).toBe("original");
+  });
+})
+
+describe("victron-dbus-virtual, SetValues", () => {
+
+  it("works for the happy case", () => {
+    const declaration = { name: "foo", properties: { SomeProp: { type: "s" }, OtherProp: { type: "i" } } };
+    const definition = { SomeProp: "my text" };
+    const bus = {
+      exportInterface: jest.fn(),
+    };
+
+    addVictronInterfaces(bus, declaration, definition, false);
+
+    const iface = bus.exportInterface.mock.calls[0][0];
+    const result = iface.SetValues([
+      ["SomeProp", [[{ type: "s" }], ["changed"]]]
+    ]);
+    expect(result).toBe(0);
+    expect(definition.SomeProp).toBe("changed");
+  });
+
+  it("fails if the property is not defined in the declaration", () => {
+    const declaration = { name: "foo", properties: { SomeProp: { type: "s" } } };
+    const definition = { SomeProp: "my text" };
+    const bus = {
+      exportInterface: jest.fn(),
+    };
+
+    addVictronInterfaces(bus, declaration, definition, false);
+
+    const iface = bus.exportInterface.mock.calls[0][0];
+    try {
+      iface.SetValues([
+        ["UndefinedProp", [[{ type: "s" }], ["changed"]]]
+      ]);
+      expect(true).toBe(false); // should not reach this line
+    } catch (e) {
+      expect(e.message.match("Property UndefinedProp not found in properties")).toBeTruthy();
+    }
+    // TODO: our behavior might be wrong: Should we return -1 instead of throwing an error?
+    // expect(result).toBe(-1);
+    expect(definition.SomeProp).toBe("my text");
+  });
+
+  it("returns -1 and does not update when SetValues includes a readonly property", () => {
+    const declaration = { name: "foo", properties: { ReadOnlyProp: { type: "s", readonly: true }, WritableProp: "s" } };
+    const definition = { ReadOnlyProp: "original", WritableProp: "original" };
+    const bus = { exportInterface: jest.fn() };
+
+    addVictronInterfaces(bus, declaration, definition, false);
+
+    const iface = bus.exportInterface.mock.calls[0][0];
+    const result = iface.SetValues([["ReadOnlyProp", [[{ type: "s" }], ["changed"]]]]);
+    expect(result).toBe(-1);
+    expect(definition.ReadOnlyProp).toBe("original");
+  });
 })
 

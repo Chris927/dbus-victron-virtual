@@ -7,7 +7,7 @@ describe("victron-dbus-virtual, setValue tests", () => {
     const definition = { StringProp: "hello" };
     const bus = {
       exportInterface: () => { },
-      invoke: function (args, cb) {
+      invoke: function(args, cb) {
         process.nextTick(() => cb(null, args));
       },
     };
@@ -20,18 +20,18 @@ describe("victron-dbus-virtual, setValue tests", () => {
 
     const result = await setValue({
       path: "/StringProp",
-      value: "fourty-two",
+      value: "forty-two",
       destination: "foo",
       interface_: "foo",
     });
     expect(result.member).toBe("SetValue");
-    expect(result.body).toStrictEqual([["s", "fourty-two"]]);
+    expect(result.body).toStrictEqual([["s", "forty-two"]]);
     expect(result.path).toBe("/StringProp");
     expect(result.interface).toBe("foo");
     expect(result.destination).toBe("foo");
 
     // NOTE: calling setValue() does *not* change the definition. If you want to update the definition,
-    // re-assign it: "definition.StringProp = 'fourty-two';"
+    // re-assign it: "definition.StringProp = 'forty-two';"
     // ... if you want to notify other processes of the change, you can call emitItemsChanged().
     // The purpose of setValue() is to change the value in the dbus object, not the definition. This is useful
     // for settings.
@@ -43,7 +43,7 @@ describe("victron-dbus-virtual, setValue tests", () => {
     const definition = { StringProp: "hello" };
     const bus = {
       exportInterface: () => { },
-      invoke: function (args, cb) {
+      invoke: function(args, cb) {
         process.nextTick(() => cb(null, args));
       },
     };
@@ -96,7 +96,7 @@ describe("victron-dbus-virtual, setValue tests", () => {
         interfaces.push(iface);
         iface.emit = emit;
       },
-      invoke: function (args, cb) {
+      invoke: function(args, cb) {
         process.nextTick(() => cb(null, args));
       },
     };
@@ -120,7 +120,7 @@ describe("victron-dbus-virtual, setValue tests", () => {
     const definition = { StringProp: "hello" };
     const bus = {
       exportInterface: () => { },
-      invoke: function (_args, cb) {
+      invoke: function(_args, cb) {
         process.nextTick(() => cb(new Error("testing ... invoke failed")));
       },
     };
@@ -129,7 +129,7 @@ describe("victron-dbus-virtual, setValue tests", () => {
     try {
       await setValue({
         path: "/StringProp",
-        value: "fourty-two",
+        value: "forty-two",
         destination: "foo",
         interface_: "foo",
       });
