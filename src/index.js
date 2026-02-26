@@ -540,13 +540,17 @@ function addVictronInterfaces(
       sanitizedValues[cleanKey] = value;
     }
 
+    // first, check if any of the values are readonly, and if so, throw an error
     for (const k of Object.keys(sanitizedValues)) {
       if (!declaration.properties || !declaration.properties[k]) {
         throw new Error(`Property ${k} not found in properties.`);
       }
       if ((declaration.properties[k] || {}).readonly) {
-        continue;
+        throw new Error(`Property ${k} is readonly and cannot be set.`);
       }
+    }
+
+    for (const k of Object.keys(sanitizedValues)) {
       definition[k] = validateNewValue(k, declaration.properties[k], sanitizedValues[k]);
     }
     debug(`setValuesLocally updated definition:`, definition);
