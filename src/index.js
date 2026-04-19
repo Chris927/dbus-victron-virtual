@@ -476,6 +476,25 @@ function addVictronInterfaces(
     }
   };
 
+  function processPropertyChanges({ changes: values }) {
+    const changes = {}
+    debug("processPropertyChanges called with values:", values);
+    for (const [k, value] of Object.entries(values)) {
+      changes[k] = validateNewValue(k, declaration.properties[k], value);
+    }
+    const changedProperties = onPropertiesChanged({ changes, instance: definition });
+
+    for (const k of Object.keys(changedProperties)) {
+      if (!declaration.properties || !declaration.properties[k]) {
+        throw new Error(`Property ${k} not found in properties.`);
+      }
+      // we allow readonly properties to be changed through onPropertiesChanged, but
+      // not through SetValue, so we don't check readonly here.
+    }
+
+    return changedProperties;
+  }
+
   // we use this for GetItems and ItemsChanged.
   function getProperties(limitToPropertyNames = [], prependSlash = false) {
     // Filter entries based on specificItem if provided
@@ -511,30 +530,17 @@ function addVictronInterfaces(
     },
     SetValues: function(values /* msg */) {
       debug(`SetValues called with values:`, values);
-      for (const [k] of values) {
+      const changes = {}
+      for (const [k, value] of values) {
         if (!declaration.properties || !declaration.properties[k]) {
           throw new Error(`Property ${k} not found in properties.`);
         }
         if ((declaration.properties[k] || {}).readonly) {
           return -1;
         }
-      }
-      const changes = {}
-      for (const [k, value] of values) {
         changes[k] = validateNewValue(k, declaration.properties[k], unwrapValue(value));
       }
-      const changedProperties = onPropertiesChanged({ changes, instance: iface });
-      // TODO: do similar validation to what we do in SetValue below
-
-      for (const k of Object.keys(changedProperties)) {
-        if (!declaration.properties || !declaration.properties[k]) {
-          throw new Error(`Property ${k} not found in properties.`);
-        }
-        if ((declaration.properties[k] || {}).readonly) {
-          console.warn(`Property ${k} is readonly and cannot be set, but it is being set by 'onPropertiesChanged'.`);
-        }
-
-      }
+      const changedProperties = processPropertyChanges({ changes });
 
       for (const k of Object.keys(changedProperties)) {
         definition[k] = changedProperties[k];
@@ -577,15 +583,11 @@ function addVictronInterfaces(
       }
     }
 
-    const changes = {}
-    for (const k of Object.keys(sanitizedValues)) {
-      changes[k] = validateNewValue(k, declaration.properties[k], sanitizedValues[k]);
-    }
-    const changedProperties = onPropertiesChanged({ changes, instance: iface });
-    debug(`setValuesLocally updated definition:`, definition);
+    const changedProperties = processPropertyChanges({ changes: sanitizedValues });
     for (const k of Object.keys(changedProperties)) {
       definition[k] = changedProperties[k];
     }
+    debug(`setValuesLocally updated definition:`, definition);
     iface.emit("ItemsChanged", getProperties(Object.keys(changedProperties), true));
   }
 
@@ -813,23 +815,14 @@ function addVictronInterfaces(
             return -1;
           }
           try {
-            const changes = {
-              [k]: validateNewValue(k, declaration.properties[k], unwrapValue(value))
-            };
 
-            const changedProperties = onPropertiesChanged({ changes, instance: iface });
-
-            // validate that changedProperties only contains valid properties, warn about read-only properties
-            for (const changedKey of Object.keys(changedProperties)) {
-              if (!declaration.properties || !declaration.properties[changedKey]) {
-                throw new Error(`Property ${changedKey} not found in properties.`);
+            const changedProperties = processPropertyChanges({
+              changes: {
+                [k]: validateNewValue(k, declaration.properties[k], unwrapValue(value))
               }
-              if ((declaration.properties[changedKey] || {}).readonly) {
-                console.warn(`Property ${changedKey} is readonly and cannot be set, but it is being set by 'onPropertiesChanged'.`);
-              }
-            }
+            })
 
-            // validation done, now update definition with all changed properties
+            // validation done, update definition with all changed properties
             for (const changedKey of Object.keys(changedProperties)) {
               definition[changedKey] = validateNewValue(changedKey, declaration.properties[changedKey], changedProperties[changedKey]);
             }
