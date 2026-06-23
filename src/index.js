@@ -426,8 +426,12 @@ function addVictronInterfaces(
       );
       return;
     }
-    declaration["properties"]["Mgmt/Connection"] = { type: "s", readonly: true };
-    definition["Mgmt/Connection"] = "Node-RED";
+    if (!declaration["properties"]["Mgmt/Connection"]) {
+      declaration["properties"]["Mgmt/Connection"] = { type: "s", readonly: true };
+    }
+    if (definition["Mgmt/Connection"] == null) {
+      definition["Mgmt/Connection"] = "Node-RED";
+    }
     declaration["properties"]["Mgmt/ProcessName"] = { type: "s", readonly: true };
     definition["Mgmt/ProcessName"] = packageJson.name;
     declaration["properties"]["Mgmt/ProcessVersion"] = { type: "s", readonly: true };
