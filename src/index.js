@@ -55,6 +55,8 @@ function wrapValue(t, v) {
       return ["s", v];
     case "i":
       return ["i", v];
+    case "u":
+      return ["u", v];
     case "d":
       return ["d", v];
     case "ad":
