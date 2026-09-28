@@ -12,6 +12,7 @@ const products = {
   battery: { id: 0xc065 },
   pvinverter: { id: 0xc066, name: 'PV inverter' },
   ev: { id: 0xc067, name: 'EV' },
+  evcs: { id: 0xc100, name: 'EVCS' },
   gps: { id: 0xc068, name: 'GPS' },
   'switch': { id: 0xc069 },
   acload: { id: 0xc06a, name: 'AC load' },
