@@ -653,10 +653,16 @@ function addVictronInterfaces(
       state.keepAliveTimer = setTimeout(() => {
         console.warn('S2 KeepAlive timeout reached for CEM ID', state.connectedCemId, ', disconnecting.');
         emitS2Signal('Disconnect', [state.connectedCemId, 'KeepAlive missed']);
-        state.connectedCemId = null;
-        state.keepAliveTimeout = 0;
-        state.lastSeen = 0;
       }, state.keepAliveTimeout * 1.2 * 1000); // 20% grace period
+    }
+
+    function endSession(cemId) {
+      const state = declaration.__s2state;
+      clearTimeout(state.keepAliveTimer);
+      state.connectedCemId = null;
+      state.keepAliveTimeout = 0;
+      state.lastSeen = 0;
+      declaration.__s2Handlers.Disconnect(cemId);
     }
 
     const s2Iface = {
@@ -695,12 +701,6 @@ function addVictronInterfaces(
           setKeepAliveTimer(state);
           debugS2('CEM ID', cemId, 'connected.')
           declaration.__s2Handlers.Connect(cemId, keepAliveInterval);
-        } else if (state.connectedCemId === cemId) {
-          // it's a reconnect, accept
-          state.keepAliveTimeout = keepAliveInterval
-          state.lastSeen = now()
-          setKeepAliveTimer(state);
-          debugS2('CEM ID', cemId, 're-connected.')
         } else {
           console.warn('CEM ID', cemId, 'is trying to connect, but CEM ID', state.connectedCemId, 'is already connected. Rejecting.')
           returnValue = false;
@@ -710,19 +710,18 @@ function addVictronInterfaces(
       },
       Disconnect: function(cemId) {
         // TODO: when called without cemId via dbus-send, we don't fail, but get an object instead of a cemId. We should handle that case.
-        // if we are not connected, ignore. If we are connected with a different cemId, ignore. If we are connected with the same cemId, disconnect, i.e. reset internal state, and call __s2Handlers.Disconnect.
+        // if cemId is not the connected CEM, reply with a Disconnect signal. If it is, disconnect, i.e. reset internal state, and call __s2Handlers.Disconnect.
         const state = declaration.__s2state;
         if (state.connectedCemId === cemId) {
           debugS2(`S2 Disconnect called with matching cemId ${cemId}, disconnecting.`);
-          state.connectedCemId = null;
-          state.lastSeen = 0;
-          state.keepAliveTimeout = 0;
-          clearInterval(state.keepAliveTimer);
-          declaration.__s2Handlers.Disconnect(cemId);
+          endSession(cemId);
         } else {
           console.warn(
-            `S2 Disconnect called with cemId ${cemId}, but connectedCemId is ${state.connectedCemId}, ignoring.`,
+            `S2 Disconnect called with cemId ${cemId}, but connectedCemId is ${state.connectedCemId}, ignoring and sending Disconnect signal back.`,
           );
+          if (typeof cemId === 'string') {
+            s2Iface.emit('Disconnect', cemId, 'Not connected');
+          }
         }
       },
       Message: function(cemId, message) {
@@ -737,7 +736,7 @@ function addVictronInterfaces(
           console.warn(
             `S2 Message called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring and sending Disconnect signal back.`,
           );
-          emitS2Signal('Disconnect', [cemId, 'Not connected']);
+          s2Iface.emit('Disconnect', cemId, 'Not connected');
         }
       },
       KeepAlive: function(cemId) {
@@ -746,9 +745,9 @@ function addVictronInterfaces(
         );
         if (declaration.__s2state.connectedCemId !== cemId) {
           console.warn(
-            `S2 KeepAlive called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring.`,
+            `S2 KeepAlive called with cemId ${cemId}, but connectedCemId is ${declaration.__s2state.connectedCemId}, ignoring and sending Disconnect signal back.`,
           );
-          emitS2Signal('Disconnect', [cemId, 'Not connected']);
+          s2Iface.emit('Disconnect', cemId, 'Not connected');
           return false;
         }
         // update lastSeen and reset timer
@@ -804,6 +803,9 @@ function addVictronInterfaces(
       }
       const actualArgs = args.length > 1 ? args : [connectedCemId, args[0]];
       s2Iface.emit(name, ...actualArgs);
+      if (name === 'Disconnect') {
+        endSession(connectedCemId);
+      }
 
     }
 
