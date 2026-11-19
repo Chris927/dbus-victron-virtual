@@ -140,9 +140,9 @@ describe("victron-dbus-virtual, s2 tests", () => {
       expect(returnValue_initialConnect).toBe(true);
       expect(declaration.__s2state.connectedCemId).toBe('cem1234');
 
-      // Call Connect again with same cemId
+      // Call Connect again with same cemId: rejected, the session already exists
       const returnValue_secondConnect = s2Interface.Connect('cem1234', keepAliveInterval);
-      expect(returnValue_secondConnect).toBe(true);
+      expect(returnValue_secondConnect).toBe(false);
       expect(declaration.__s2state.connectedCemId).toBe('cem1234');
 
       // Call Connect with different cemId
@@ -155,6 +155,7 @@ describe("victron-dbus-virtual, s2 tests", () => {
       // After keepAliveInterval + 30%, the connection should be considered lost
       expect(declaration.__s2state.connectedCemId).toBeNull();
       expect(emitCallback.mock.calls.length).toBe(1); // we had an earlier disconnect
+      expect(disconnectHandler.mock.calls).toEqual([['cem1234']]);
 
       // TODO: we *should* receive the reason as third parameter, but currently don't, likely due to our monkey-patching of emit,
       // compare https://github.com/Chris927/dbus-native/blob/0b04da3f37d30b12d45bc8ccc1a5687c94355892/lib/bus.js#L231
@@ -190,9 +191,117 @@ describe("victron-dbus-virtual, s2 tests", () => {
       s2Interface.Disconnect('cem1234');
       expect(declaration.__s2state.connectedCemId).toBeNull();
       expect(emitCallback.mock.calls.length).toBe(2);
-      expect(disconnectHandler.mock.calls.length).toBe(1);
-      expect(disconnectHandler.mock.calls[0]).toEqual(['cem1234']);
+      expect(disconnectHandler.mock.calls.length).toBe(2);
+      expect(disconnectHandler.mock.calls[1]).toEqual(['cem1234']);
 
+    });
+
+    it.each([
+      ['no CEM is connected', null],
+      ['another CEM is connected', 'cem1234'],
+    ])('replies Not connected to a wrong cemId when %s', (_, connectedCemId) => {
+      // records the signals with all their arguments, which emitCallback doesn't (see TODO above)
+      const signals = [];
+      const bus = {
+        exportInterface: jest.fn((iface) => {
+          iface.emit = (...args) => signals.push(args);
+        }),
+      }
+      const declaration = {
+        name: "foo",
+        __enableS2: true,
+        __s2Handlers: {
+          Connect: () => { },
+          Disconnect: () => { },
+          Message: () => { },
+          KeepAlive: () => { },
+        }
+      };
+      addVictronInterfaces(bus, declaration, {}, false);
+      const s2Interface = bus.exportInterface.mock.calls[1][0];
+      if (connectedCemId) {
+        s2Interface.Connect(connectedCemId, 15);
+      }
+
+      s2Interface.Message('cem5678', 'hello');
+      expect(s2Interface.KeepAlive('cem5678')).toBe(false);
+      s2Interface.Disconnect('cem5678');
+
+      expect(signals).toEqual([
+        ['Disconnect', 'cem5678', 'Not connected'],
+        ['Disconnect', 'cem5678', 'Not connected'],
+        ['Disconnect', 'cem5678', 'Not connected'],
+      ]);
+      expect(declaration.__s2state.connectedCemId).toBe(connectedCemId);
+    });
+
+    it('ends the session when the RM sends a Disconnect signal', () => {
+      const signals = [];
+      const bus = {
+        exportInterface: jest.fn((iface) => {
+          iface.emit = (...args) => signals.push(args);
+        }),
+      }
+      const connectHandler = jest.fn();
+      const disconnectHandler = jest.fn();
+      const declaration = {
+        name: "foo",
+        __enableS2: true,
+        __s2Handlers: {
+          Connect: connectHandler,
+          Disconnect: disconnectHandler,
+          Message: () => { },
+          KeepAlive: () => { },
+        }
+      };
+      const { emitS2Signal } = addVictronInterfaces(bus, declaration, {}, false);
+      const s2Interface = bus.exportInterface.mock.calls[1][0];
+
+      s2Interface.Connect('cem1234', 15);
+      // a Disconnect signal to another CEM leaves the session alone
+      emitS2Signal('Disconnect', ['cem5678', 'Not connected']);
+      expect(declaration.__s2state.connectedCemId).toBe('cem1234');
+
+      emitS2Signal('Disconnect', ['shutting down']);
+
+      expect(signals).toEqual([
+        ['Disconnect', 'cem5678', 'Not connected'],
+        ['Disconnect', 'cem1234', 'shutting down'],
+      ]);
+      expect(declaration.__s2state.connectedCemId).toBeNull();
+      expect(disconnectHandler.mock.calls).toEqual([['cem1234']]);
+
+      // the CEM can connect again right away, and the old timer is gone
+      expect(s2Interface.Connect('cem1234', 15)).toBe(true);
+      expect(connectHandler.mock.calls.length).toBe(2);
+      jest.advanceTimersByTime(15 * 1.1 * 1000);
+      expect(declaration.__s2state.connectedCemId).toBe('cem1234');
+    });
+
+    it('does not reply to a Disconnect without a cemId', () => {
+      const signals = [];
+      const bus = {
+        exportInterface: jest.fn((iface) => {
+          iface.emit = (...args) => signals.push(args);
+        }),
+      }
+      const declaration = {
+        name: "foo",
+        __enableS2: true,
+        __s2Handlers: {
+          Connect: () => { },
+          Disconnect: () => { },
+          Message: () => { },
+          KeepAlive: () => { },
+        }
+      };
+      addVictronInterfaces(bus, declaration, {}, false);
+      const s2Interface = bus.exportInterface.mock.calls[1][0];
+
+      // dbus-native passes the message object when the argument is missing
+      s2Interface.Disconnect({ member: 'Disconnect' });
+
+      expect(signals).toEqual([]);
     });
 
   });
