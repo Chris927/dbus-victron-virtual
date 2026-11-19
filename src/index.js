@@ -803,7 +803,7 @@ function addVictronInterfaces(
       }
       const actualArgs = args.length > 1 ? args : [connectedCemId, args[0]];
       s2Iface.emit(name, ...actualArgs);
-      if (name === 'Disconnect') {
+      if (name === 'Disconnect' && actualArgs[0] === connectedCemId) {
         endSession(connectedCemId);
       }
 

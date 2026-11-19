@@ -258,9 +258,16 @@ describe("victron-dbus-virtual, s2 tests", () => {
       const s2Interface = bus.exportInterface.mock.calls[1][0];
 
       s2Interface.Connect('cem1234', 15);
+      // a Disconnect signal to another CEM leaves the session alone
+      emitS2Signal('Disconnect', ['cem5678', 'Not connected']);
+      expect(declaration.__s2state.connectedCemId).toBe('cem1234');
+
       emitS2Signal('Disconnect', ['shutting down']);
 
-      expect(signals).toEqual([['Disconnect', 'cem1234', 'shutting down']]);
+      expect(signals).toEqual([
+        ['Disconnect', 'cem5678', 'Not connected'],
+        ['Disconnect', 'cem1234', 'shutting down'],
+      ]);
       expect(declaration.__s2state.connectedCemId).toBeNull();
       expect(disconnectHandler.mock.calls).toEqual([['cem1234']]);
 
